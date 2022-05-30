@@ -1,0 +1,343 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HBase - Scan 中 setCaching setMaxResultSize setBatch 解惑 | Yao&#39;s Blog</title>
+<link rel="shortcut icon" href="https://yaofun.top/favicon.ico?v=1653915643763">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://yaofun.top/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="HBase - Scan 中 setCaching setMaxResultSize setBatch 解惑 | Yao&#39;s Blog - Atom Feed" href="https://yaofun.top/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NFP4JGDBYW"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NFP4JGDBYW');
+</script>
+
+
+    <meta name="description" content="0. 蜜汁参数
+在做 HBase 客户端 scan 优化时，经常会碰到以下几个参数，总是让人迷惑 ，不知从何优化起。
+
+.setCache （缓存大小? 字节数？行数？）
+.setMaxResultSize （最大结果数？）
+.setBat..." />
+    <meta name="keywords" content="HBase" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://yaofun.top">
+  <img class="avatar" src="https://yaofun.top/images/avatar.png?v=1653915643763" alt="">
+  </a>
+  <h1 class="site-title">
+    Yao&#39;s Blog
+  </h1>
+  <p class="site-description">
+    「晚来天欲雪，能饮一杯无」
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/goby-ao" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://twitter.com/Sunflowers724" target="_blank">
+          <i class="ri-twitter-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://weibo.com/yaoyao724" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              HBase - Scan 中 setCaching setMaxResultSize setBatch 解惑
+            </h2>
+            <div class="post-info">
+              <span>
+                2017-09-19
+              </span>
+              <span>
+                6 min read
+              </span>
+              
+                <a href="https://yaofun.top/tag/Cx9V7jSSN/" class="post-tag">
+                  # HBase
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <h1 id="0-蜜汁参数">0. 蜜汁参数</h1>
+<p>在做 HBase 客户端 scan 优化时，经常会碰到以下几个参数，总是让人迷惑 ，不知从何优化起。</p>
+<ul>
+<li><code>.setCache</code> （缓存大小? 字节数？行数？）</li>
+<li><code>.setMaxResultSize</code> （最大结果数？）</li>
+<li><code>.setBatch</code> （批量？）</li>
+</ul>
+<p>造成这种困扰很大的原因是命名问题。<br>
+先说下结论，如果把名字改成如下，语义会清晰很多 。[1]</p>
+<ul>
+<li><code>.setCaching</code>  =&gt; <strong><code>.setNumberOfRowsFetchSize</code></strong>  (客户端每次 rpc fetch 的行数)</li>
+<li><code>.setMaxResultSize</code> =&gt; <strong><code>.setMaxResultByteSize</code></strong>  （客户端缓存的最大字节数）</li>
+<li><code>.setBatch</code>  =&gt; <strong><code>.setColumnsChunkSize</code></strong> （客户端每次获取的列数）</li>
+</ul>
+<h1 id="1-client-scan-原理及相关源码解读">1. Client Scan 原理及相关源码解读</h1>
+<p>HBase 每次 scan 的数据量可能会比较大，客户端不会一次性全部把数据从服务端拉回来。而是通过多次 rpc 分批次的拉取。类似于 TCP 协议里面一段一段的传输，可以做到细粒度的流量控制。至于如何调优，控制每次 rpc 拉取的数据量，就可以通过以上三个比较蛋疼的参数来控制。</p>
+<p>我们可以先看一段来自 HBase scan 里面的核心类 <a href="https://github.com/apache/hbase/blob/branch-1.2/hbase-client/src/main/java/org/apache/hadoop/hbase/client/ClientScanner.java#L364">ClientScanner</a> 里的读取逻辑，通过它来了解整个流程。</p>
+<pre><code>@Override
+public Result next() throws IOException {
+  // If the scanner is closed and there's nothing left in the cache, next is a no-op.
+  if (cache.size() == 0 &amp;&amp; this.closed) {
+    return null;
+  }
+
+  // 缓冲中没有就 RPC 调用读取数据进缓存
+  if (cache.size() == 0) {   
+        loadCache();
+  }
+ 
+  // 缓冲中有直接从缓存中取
+  if (cache.size() &gt; 0) {
+    return cache.poll();
+  }
+ 
+  // if we exhausted this scanner before calling close, write out the scan metrics
+  writeScanMetrics();
+  return null;
+}
+</code></pre>
+<p>每次从缓存 cache 中读，缓存为空则 loadCache , 实际上 cache 是通过一个链表来实现的，定义如下:<br>
+<code>protected final LinkedList&lt;Result&gt; cache = new LinkedList&lt;Result&gt;();</code></p>
+<p>继续看 loadCache() ，为了弄清大体主流程，我删除了部分代码</p>
+<pre><code> protected void loadCache() throws IOException {
+    Result[] values = null;
+    // 剩余最大容量
+    long remainingResultSize = maxScannerResultSize;
+    // 行数计数 为 setCaching 的值
+    int countdown = this.caching;
+    // 配置 rpc 请求的条数
+    callable.setCaching(this.caching);
+    boolean serverHasMoreResults = false;
+
+    // do while 循环，循环次数即为 rpc 次数
+    do {
+      try {
+        // rpc 从 server 拉数据，请求的条数为 this.caching 默认为 Integer.Max_VALUE
+        values = call(callable, caller, scannerTimeout);
+         } catch (DoNotRetryIOException | NeedUnmanagedConnectionException e) {
+             // 异常处理 这里略过
+       }
+      // Groom the array of Results that we received back from the server before adding that
+      // Results to the scanner's cache
+      // 将数据放入缓存前，先对数据进行一些处理，主要是处理对于部分对调用这不可见的数据
+      List&lt;Result&gt; resultsToAddToCache =
+          getResultsToAddToCache(values, callable.isHeartbeatMessage());
+      if (!resultsToAddToCache.isEmpty()) {
+        // 遍历 results 写入 cache
+        for (Result rs : resultsToAddToCache) {
+          cache.add(rs);
+          // We don't make Iterator here
+          for (Cell cell : rs.rawCells()) {
+            // 估算每个 cell 的大小，计算剩余 byte size 
+            remainingResultSize -= CellUtil.estimatedHeapSizeOf(cell);
+          }
+          // 剩余行数 --
+          countdown--;
+          this.lastResult = rs;
+        }
+      }
+
+      // We expect that the server won't have more results for us when we exhaust
+      // the size (bytes or count) of the results returned. If the server *does* inform us that
+      // there are more results, we want to avoid possiblyNextScanner(...). Only when we actually
+      // get results is the moreResults context valid.
+      if (null != values &amp;&amp; values.length &gt; 0 &amp;&amp; callable.hasMoreResultsContext()) {
+        serverHasMoreResults = callable.getServerHasMoreResults() &amp; partialResults.isEmpty();
+      }
+      // Values == null means server-side filter has determined we must STOP
+    } while (doneWithRegion(remainingResultSize, countdown, serverHasMoreResults)
+        &amp;&amp; (!partialResults.isEmpty() || possiblyNextScanner(countdown, values == null)));
+     // 循环条件
+  }
+</code></pre>
+<p>这里重点看下do while 循环的条件 doneWithRegion()</p>
+<pre><code>  /**
+   * @param remainingResultSize
+   * @param remainingRows
+   * @param regionHasMoreResults
+  */
+  private boolean doneWithRegion(long remainingResultSize, int remainingRows,
+      boolean regionHasMoreResults) {
+    // 同时满足这些才行这里的
+    // remainingResultSize 初始值即为配置的 setMaxResultSize 
+   //  remainingRows 初始值为配置的 setCaching （实际为：行数）
+    return remainingResultSize &gt; 0 &amp;&amp; remainingRows &gt; 0 &amp;&amp; !regionHasMoreResults;
+  }
+</code></pre>
+<p>因为每次 while 循环会进行一次 rpc 调用，不同的参数配置组合配置导致 rpc 调用的次数不同。必须同时满足行数与字节数的的限制才行。</p>
+<h1 id="3-官方配置与建议">3. 官方配置与建议</h1>
+<p>这几个参数对应的配置如下</p>
+<ul>
+<li>
+<p><code>hbase.client.scanner.caching - (setCaching)</code>：HBase-0.98 默认值为为 100，HBase-1.2 默认值为 2147483647，即 Integer.MAX_VALUE。Scan.next() 的一次 RPC 请求 fetch 的记录条数。<strong>配置建议：这个参数与 下面的<code>hbase.client.scanner.max.result.size - (setMaxResultSize) </code> 配置使用，在网络状况良好的情况下，自定义设置不宜太小， 可以直接采用默认值，不配置。</strong></p>
+</li>
+<li>
+<p><code>hbase.client.scanner.max.result.size - (setMaxResultSize)</code>：HBase-0.98 无该项配置，HBase-1.2 默认值为 2<em>1024</em>1024，即 2M。Scan.next() 的一次 RPC 请求 fetch 的数据量大小，目前 HBase-1.2 在 Caching 为默认值(Integer Max)的时候，实际使用这个参数控制 RPC 次数和流量。<strong>配置建议：如果网络状况较好（万兆网卡），scan 的数据量非常大，可以将这个值配置高一点。如果配置过高：则可能 loadCache 速度比较慢，导致 scan timeout 异常</strong></p>
+</li>
+<li>
+<p><code>hbase.server.scanner.max.result.size</code>：服务端配置。HBase-0.98 无该项配置，HBase-1.2 新增，默认值为 100<em>1024</em>1024，即 100M。该参数表示当 Scan.next() 发起 RPC 后，服务端返回给客户端的最大字节数，防止 Server OOM。[2]</p>
+</li>
+<li>
+<p><code>setBatch()</code>  坑爹的命名，这个实际上是配置获取的列数，假如表有两个列簇 cf，info，每个列簇5个列。这样每行可能有10列了，setBatch() 可以控制每次获取的最大列数，进一步从列级别控制流量。<strong>配置建议：当列数很多，数据量大时考虑配置此参数，例如100列每次只获取50列。一般情况可以默认值（-1 不受限）。</strong></p>
+</li>
+</ul>
+<p>参考：<br>
+[1] <a href="http://danboykis.com/?p=2230">HBase client’s weird API names</a><br>
+[2] <a href="http://www.cnblogs.com/zhongxun/articles/6485919.html">HBase Client配置参数说明</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li><a href="#0-%E8%9C%9C%E6%B1%81%E5%8F%82%E6%95%B0">0. 蜜汁参数</a></li>
+<li><a href="#1-client-scan-%E5%8E%9F%E7%90%86%E5%8F%8A%E7%9B%B8%E5%85%B3%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB">1. Client Scan 原理及相关源码解读</a></li>
+<li><a href="#3-%E5%AE%98%E6%96%B9%E9%85%8D%E7%BD%AE%E4%B8%8E%E5%BB%BA%E8%AE%AE">3. 官方配置与建议</a></li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+
+        
+          
+            <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+<div id="gitalk-container"></div>
+
+<script>
+
+  var gitalk = new Gitalk({
+    clientID: '61bda7106769d83cf29f',
+    clientSecret: '74f87c9c12044efbd81a2e6c24f1a3718e31be47',
+    repo: 'goby-ao.github.io',
+    owner: 'goby-ao',
+    admin: ['goby-ao'],
+    id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+    distractionFreeMode: false  // Facebook-like distraction free mode
+  })
+
+  gitalk.render('gitalk-container')
+
+</script>
+
+          
+
+          
+        
+
+        <div class="site-footer">
+  Powered by &nbsp; <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> &nbsp;/ Hosted on GitHub Page
+  <a class="rss" href="https://yaofun.top/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -1,0 +1,288 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HBase - 读懂 bucketcache 日志统计信息 | Yao&#39;s Blog</title>
+<link rel="shortcut icon" href="https://yaofun.top/favicon.ico?v=1653915643763">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://yaofun.top/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="HBase - 读懂 bucketcache 日志统计信息 | Yao&#39;s Blog - Atom Feed" href="https://yaofun.top/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NFP4JGDBYW"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NFP4JGDBYW');
+</script>
+
+
+    <meta name="description" content="这是 HBase regionserver 打印的一段 bucket cache 统计信息，里面有些指标有点让人摸不着头脑。下面将通过提问的方式，结合实际业务与源码逐一解释各个指标，分析可以尝试优化的点。
+
+2022-05-09 16:26..." />
+    <meta name="keywords" content="HBase" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://yaofun.top">
+  <img class="avatar" src="https://yaofun.top/images/avatar.png?v=1653915643763" alt="">
+  </a>
+  <h1 class="site-title">
+    Yao&#39;s Blog
+  </h1>
+  <p class="site-description">
+    「晚来天欲雪，能饮一杯无」
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/goby-ao" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://twitter.com/Sunflowers724" target="_blank">
+          <i class="ri-twitter-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://weibo.com/yaoyao724" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              HBase - 读懂 bucketcache 日志统计信息
+            </h2>
+            <div class="post-info">
+              <span>
+                2022-05-08
+              </span>
+              <span>
+                6 min read
+              </span>
+              
+                <a href="https://yaofun.top/tag/Cx9V7jSSN/" class="post-tag">
+                  # HBase
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>这是 HBase regionserver 打印的一段 bucket cache 统计信息，里面有些指标有点让人摸不着头脑。下面将通过提问的方式，结合实际业务与源码逐一解释各个指标，分析可以尝试优化的点。</p>
+<blockquote>
+<p>2022-05-09 16:26:31,240 INFO [BucketCacheStatsExecutor] bucket.BucketCache: failedBlockAdditions=20681097, totalSize=60.00 GB, freeSize=6.75 GB, usedSize=53.25 GB, cacheSize=52.43 GB, accesses=41703312106, hits=37430928681, IOhitsPerSecond=1577, IOTimePerHit=0.06, hitRatio=89.76%, cachingAccesses=38812699538, cachingHits=37362791550,cachingHitsRatio=96.26%, evictions=14844, evicted=1384179287, evictedPerRun=93248.40625</p>
+</blockquote>
+<p><strong>问题1 : failedBlockAdditions 是什么？</strong><br>
+写缓存失败的次数，写缓存流程大概如下，失败出现在第 2 步:</p>
+<ol>
+<li>写入 ramCache</li>
+<li>写入 write queue，它是一个阻塞队列 ArrayBlockingQueue。入队 queue.offer() 失败的时候，将失败次数记录写到：failedBlockAdditions</li>
+</ol>
+<p>所以 failedBlockAdditions 是写缓存失败次数，具体是写入 write 队列失败的次数。</p>
+<p><strong>问题1.1 ：为什么会写入队列失败？有何优化的方法？</strong><br>
+查看 ArrayBlockingQueue offer() 方法源码，当队列满了，等待了 timeout 时间后，队列依然是满的，返回 false，入队列失败。<br>
+所以 failedBlockAdditions 一般发生在出现大量请求，导致写缓存繁忙的时候。与之的对应的参数有两个：</p>
+<ol>
+<li>write 线程个数：hbase.bucketcache.writer.threads （默认3)</li>
+<li>每个write 线程队列长度配置：hbase.bucketcache.writer.queuelength（默认32）</li>
+</ol>
+<p>适当调大这两个参数可以缓解此问题。</p>
+<p><strong>问题2：什么是 hitCachingCount？与 hits 有什么区别？hitRatio 与 cachingHitsRatio 的区别？</strong></p>
+<p>hits 是中的缓存命中次数。</p>
+<p>hitCachingCount 统计总的缓存命中次数，但排除显示设定不会更新缓存的请求（setBlockCache(false)），它是 <a href="https://issues.apache.org/jira/browse/HBASE-2253">HBASE-2253</a> 新加的统计指标，代码如下。目的是为了更精确的统计显示使用缓存的命中率。</p>
+<pre><code class="language-java">/**
+* The number of getBlock requests that were cache hits, but only from
+* requests that were set to use the block cache.  This is because all reads
+* attempt to read from the block cache even if they will not put new blocks
+* into the block cache.  See HBASE-2253 for more information.
+*/
+private final AtomicLong hitCachingCount = new AtomicLong(0);
+</code></pre>
+<p>这里需要了解一下 hbase 的 setBlockCache 配置。所有有的读请求，都会先请求缓存。默认配置下，读请求（get、scan），如果未命中缓存会更新数据到缓存。<br>
+但有时候为了性能优化，针对 mr 或者大 scan 用户会设置不缓存数据。设置方式为：scan.setBlockCache(false)。注意，即使设置了 setBlockCache = false ，读请求第一时间也会先查缓存。所以 hitCachingCount 是统计总的缓存命中次数，但排除显示设定不会更新缓存的请求。</p>
+<p>举个例子：<br>
+access: 100 次请求，总命中缓存次数 hits：90 次 hitRatio = 90%<br>
+其中 cachingAccesses = 80， hitCachingCount = 78，cachingHitsRatio=78/80 = 97.5%<br>
+access =100，cachingAccesses = 80，其中有 20 次请求来自于非缓存请求，例如 mr 或者大 scan 请求。<br>
+所以，用户关心的真是缓存命中率为: 97.5%，而不是 90%。</p>
+<p><strong>问题3 ：IOhitsPerSecond、IOTimePerHit 是什么？</strong><br>
+这个是读缓存相关性能指标：</p>
+<ul>
+<li>IOhitsPerSecond： 每秒 bucket io hit 次数</li>
+<li>IOTimePerHit ：每次 IO 的耗时</li>
+</ul>
+<p>通过源码了解到，读缓存的流程：</p>
+<ol>
+<li>首先从 RAMCache 中查找。对于还没有来得及写入到 bucket 的缓存 block，一定存储在RAMCache 中；</li>
+<li>如果在 RAMCache 中没有找到，再在 BackingMap 中根据 blockKey 找到对应物理偏移地址offset；</li>
+<li>根据物理偏移地址 offset 可以直接从内存中查找对应的 block 数据；</li>
+</ol>
+<p>第一步，查找 RAMCache，它是一个 ConcurrentMap，如果命中相当于直接命中内存。<br>
+第二步，通过 ioEngine 去读 bucketcache 缓存，所以通过这一步命中的缓存会记录 IO 耗时，这里的 IO 耗时包括：通过 Bytebuffer 进行数据读取、读取后的数据反序列化耗时。</p>
+<p><strong>问题4：eviction 是什么？什么时候会发生 eviction？</strong><br>
+eviction 字面意思是驱逐，当缓存使用空间 &gt; acceptableSize（）或 一种类型的 block 无法申请的时候，需要释放缓存空间，通过 LRU 算法淘汰，驱逐 block。<br>
+acceptableSize = bucketc ache 配置总大小*0.95</p>
+<pre><code class="language-java">Free the space if the used size reaches acceptableSize() or one size block
+couldn't be allocated. When freeing the space, we use the LRU algorithm and
+ensure there must be some blocks evicted
+</code></pre>
+<p><strong>问题 4.1： evictions=14844, evicted=1384179287, evictedPerRun=93248.40625 分别是什么？</strong><br>
+eviction：发生 evication 的次数<br>
+evicted：总的 evict block 的个数<br>
+evictedPerRun ：evicted/eviction</p>
+<p><strong>问题 5 ：bucket cache size 怎么配置的? 使用情况如何？</strong><br>
+bucket cache size 配置的分布，从小到大是：(4+1)K，(8+1)K ...(64+1)K 到 (2048+1)K<br>
+通过 HBase UI 查看 bucketcache 分布情况，当前申请的 bucket cache size 都是 65K，并且很多 bucket 存储使用率并不高，说明 block 大都是小数据。</p>
+<p><strong>问题 5.1 ：为什么申请的大都是 （64+1）k 的 bucket ？有什么优化点</strong><br>
+这里由于 HBase 默认的 block size 是 64K，说明读请求数据大小大多在 64K block 内。并且，很多 bucket 存储使用率并不高，说明 block 大都是小数据。</p>
+<p>这里有什么可以优化的点呢？<br>
+可以尝试将表的 blocksize 调小。例如 32k。</p>
+<p>参考 HFile 代码注释，HBase 推荐的大小是 8K-1M。设置大有利于顺序扫描，比如 Scan， 但不适合随机查询，想想看，每一次随机查询可能都需要你去解压缩一个大的数据块。</p>
+<p>小的数据块适合随机的查询，但是需要更多的内存来保存数据块的索引(Data Index)，而且创建文件的时候也可能比较慢，因为在每个数据块的结尾我们都要把压缩的数据流 Flush 到文件中去（引起更多的 Flush 操作）。并且由于压缩器内部还需要一定的缓存，最小的数据块大小应该在 20KB – 30KB 左右。设置小有利于随机读。</p>
+
+              </div>
+              <div class="toc-container">
+                
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://yaofun.top/post/Before Sunrise - 第一次感受金属乐现场/">
+              <h3 class="post-title">
+                Before Sunrise - 第一次感受金属乐现场
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+            <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+<div id="gitalk-container"></div>
+
+<script>
+
+  var gitalk = new Gitalk({
+    clientID: '61bda7106769d83cf29f',
+    clientSecret: '74f87c9c12044efbd81a2e6c24f1a3718e31be47',
+    repo: 'goby-ao.github.io',
+    owner: 'goby-ao',
+    admin: ['goby-ao'],
+    id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+    distractionFreeMode: false  // Facebook-like distraction free mode
+  })
+
+  gitalk.render('gitalk-container')
+
+</script>
+
+          
+
+          
+        
+
+        <div class="site-footer">
+  Powered by &nbsp; <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> &nbsp;/ Hosted on GitHub Page
+  <a class="rss" href="https://yaofun.top/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

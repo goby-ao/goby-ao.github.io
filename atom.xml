@@ -1,0 +1,1058 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://yaofun.top</id>
+    <title>Yao&apos;s Blog</title>
+    <updated>2022-05-30T13:00:52.812Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://yaofun.top"/>
+    <link rel="self" href="https://yaofun.top/atom.xml"/>
+    <subtitle>「晚来天欲雪，能饮一杯无」</subtitle>
+    <logo>https://yaofun.top/images/avatar.png</logo>
+    <icon>https://yaofun.top/favicon.ico</icon>
+    <rights>All rights reserved 2022, Yao&apos;s Blog</rights>
+    <entry>
+        <title type="html"><![CDATA[HBase - Hive 外部表引发的读性能问题]]></title>
+        <id>https://yaofun.top/post/HBase - Hive 外部表引发的读性能问题/</id>
+        <link href="https://yaofun.top/post/HBase - Hive 外部表引发的读性能问题/">
+        </link>
+        <updated>2022-05-16T12:58:26.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="一次由-hive-hbase-外部表引发的读性能问题">一次由 Hive HBase 外部表引发的读性能问题</h1>
+<h2 id="1-问题">1 问题</h2>
+<p>近期业务反馈 HBase GET 读性能不佳，查看监控，每天有几个时间波段，GET P99 请求时延很高。</p>
+<h2 id="2-问题原因">2 问题原因</h2>
+<p>定位有一个业务有 7 张 Hive HBase 外部表，每天有两个时间定时通过 sql 的方式，并发导出全表到 hive 。代码类似于：</p>
+<pre><code class="language-sql"> insert into table_hive select * from hive_hbase_external_table;
+</code></pre>
+<p>相当于每天定时并发对 7 张大的 HBase <strong>全表 Scan</strong>，<strong>Scan 默认会写缓存</strong>，这个会导致：</p>
+<ol>
+<li>Bucket Cache 被 scan block 写满， 缓存开始淘汰，出现 cache miss (缓存命中率降低) 和 cache eviction (缓存淘汰）。<strong>cache 命中率直接影响 HBase 读性能。</strong></li>
+<li>出现 I/O 风暴，读请求没有命中缓存需要读 hdfs，此时由于 I/O 瓶颈，<strong>读性能问题进一步被放大。</strong></li>
+</ol>
+<h2 id="3-问题分析">3 问题分析</h2>
+<p>查看这几个时间段 GET 请求没有明显变多(单节点 1k/s)，而 READ 请求猛增，单节点 read request 达到 600-900k/s。</p>
+<blockquote>
+<p>推断是出现了大量 scan 或者大 scan。这里为什么要推理，因为 Ambari grafana 的 HBase scan 请求数无法显示。</p>
+</blockquote>
+<p>缓存命中率直接影响读性能，查看 BucketCache 命中率情况，这个时间段 cache miss 和 eviction 都陡增。</p>
+<blockquote>
+<p>推断是 scan 导致缓存写满，所以出现缓存被驱逐（eviction）。</p>
+</blockquote>
+<p>没有命中缓存，就会走 hdfs，查看 datanode 监控有大量的 block read，查看 datanode 磁盘监控，磁盘 I/O 这段时间被打满。</p>
+<blockquote>
+<p>大量的读导致了磁盘瓶颈，读性能更差了</p>
+</blockquote>
+<p>到这里，剩下的就是揪出是谁在进行大 Scan 操作，HBase 上承载的业务众多，一个个问业务不太现实。</p>
+<p>于是通过热点 Regionserver 节点的日志看到该时间段，有一些 Scan 的报错，找到表名，拿去一问业务就问出来问题了。</p>
+<p>业务每天定时并发对 7 张 HBase 大表进行全表 Scan，查询导出数据到 Hive。</p>
+<h2 id="4-hive-hbase-外部表使用与坑">4 Hive HBase 外部表使用与坑</h2>
+<p>创建 HBase 的 hive 外部表典型建表语句如下，rowkey 字段为 hbase 的 rowkey，label 为列族：</p>
+<pre><code class="language-sql">CREATE EXTERNAL TABLE user_profile.mix_label_scene_tag_test_1(rowkey string COMMENT 'rowkey', label map&lt;string,string&gt; COMMENT 'cf')
+ROW FORMAT SERDE 'org.apache.hadoop.hive.hbase.HBaseSerDe'
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+WITH SERDEPROPERTIES('hbase.columns.mapping'=':key,label:')
+TBLPROPERTIES('hbase.table.name'='profile:mix_label_scene_tag_pre_release')
+</code></pre>
+<p>HBase 相关的参数可以直接通过 set 的方式配置进去，例如：</p>
+<pre><code class="language-sql">set hbase.client.scanner.timeout.period=600000;
+</code></pre>
+<p>但是这里有一个坑需要注意，默认 hive hbase 外部表 scan 是会缓存 block 的，这个不容易被开发注意到。如果有大量的 scan 类型的批处理、 mr 任务等，会对缓存是一种破坏性的写入。影响其他正常读请求。HBase 官方也有建议，针对批处理类型的 scan 操作，要设置 setCacheBlocks 为 false：</p>
+<blockquote>
+<p>Scan instances can be set to use the block cache in the RegionServer via the setCacheBlocks method. For input Scans to MapReduce jobs, this should be false.  https://hbase.apache.org/book.html#perf.hbase.client.blockcache</p>
+</blockquote>
+<p>Hive 社区也有人提了这个问题 <a href="https://issues.apache.org/jira/browse/HIVE-20484">HIVE-20484</a>，在 Hive 3 以上的版本进行了修复，将外部表 scan.setCacheBlocks 默认设为 false。hive 这块的代码如下：</p>
+<pre><code class="language-java">public static final String HBASE_SCAN_CACHEBLOCKS = &quot;hbase.scan.cacheblock&quot;;
+
+...
+
+String scanCacheBlocks = tableProperties.getProperty(HBaseSerDe.HBASE_SCAN_CACHEBLOCKS);
+if (scanCacheBlocks != null) {
+  jobProperties.put(HBaseSerDe.HBASE_SCAN_CACHEBLOCKS, scanCacheBlocks);
+}
+
+...
+
+String scanCacheBlocks = jobConf.get(HBaseSerDe.HBASE_SCAN_CACHEBLOCKS);
+if (scanCacheBlocks != null) {
+  scan.setCacheBlocks(Boolean.parseBoolean(scanCacheBlocks));
+}
+</code></pre>
+<p>如果没法升级 hive ，解决办法有两个：</p>
+<ol>
+<li>重新创建外部表，SERDEPROPERTIES 里指定： 'hbase.scan.cacheblock'='false'，这种方式可以屏蔽 scan 写缓存，又保留正常的 get 读缓存。</li>
+</ol>
+<pre><code class="language-sql">CREATE EXTERNAL TABLE user_profile.mix_label_scene_tag(rowkey string COMMENT 'rowkey', label map&lt;string,string&gt; COMMENT 'cf')
+ROW FORMAT SERDE 'org.apache.hadoop.hive.hbase.HBaseSerDe'
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+WITH SERDEPROPERTIES('hbase.columns.mapping'=':key,label:','hbase.scan.cacheblock'='false')
+TBLPROPERTIES('hbase.table.name'='profile:mix_label_scene_tag_pre_release')
+</code></pre>
+<ol start="2">
+<li>修改表的属性，修改列族的缓存策略，这种方式全局屏蔽读缓存，会影响正常的 get 读写缓存</li>
+</ol>
+<pre><code class="language-shell">alter 'profile:mix_label_scene_tag', {NAME =&gt; 'label', BLOCKCACHE =&gt; 'false'}
+</code></pre>
+<p>值得一提的是，setCacheBlocks 是设置：是否把读取的数据写入到缓存中。所以不管怎么设定 setCacheBlocks 的 bool 值，HBase 默认的读请求都会先查缓存。</p>
+<h3 id="41-hive-hbase-外部表相关参数">4.1 Hive HBase 外部表相关参数</h3>
+<p>附上其他的配置，<a href="https://github.com/apache/hive/blob/master/hbase-handler/src/java/org/apache/hadoop/hive/hbase/HBaseSerDe.java">源码</a>：</p>
+<pre><code class="language-java"> public static final String HBASE_COLUMNS_MAPPING = &quot;hbase.columns.mapping&quot;;
+  public static final String HBASE_TABLE_NAME = &quot;hbase.table.name&quot;;
+  public static final String HBASE_TABLE_DEFAULT_STORAGE_TYPE = &quot;hbase.table.default.storage.type&quot;;
+  public static final String HBASE_KEY_COL = &quot;:key&quot;;
+  public static final String HBASE_TIMESTAMP_COL = &quot;:timestamp&quot;;
+  public static final String HBASE_PUT_TIMESTAMP = &quot;hbase.put.timestamp&quot;;
+  public static final String HBASE_COMPOSITE_KEY_CLASS = &quot;hbase.composite.key.class&quot;;
+  public static final String HBASE_COMPOSITE_KEY_TYPES = &quot;hbase.composite.key.types&quot;;
+  public static final String HBASE_COMPOSITE_KEY_FACTORY = &quot;hbase.composite.key.factory&quot;;
+  public static final String HBASE_STRUCT_SERIALIZER_CLASS = &quot;hbase.struct.serialization.class&quot;;
+  public static final String HBASE_SCAN_CACHE = &quot;hbase.scan.cache&quot;;
+  public static final String HBASE_SCAN_CACHEBLOCKS = &quot;hbase.scan.cacheblock&quot;;
+  public static final String HBASE_SCAN_BATCH = &quot;hbase.scan.batch&quot;;
+  public static final String HBASE_AUTOGENERATE_STRUCT = &quot;hbase.struct.autogenerate&quot;;
+  /**
+   * Determines whether a regex matching should be done on the columns or not. Defaults to true.
+   * &lt;strong&gt;WARNING: Note that currently this only supports the suffix wildcard .*&lt;/strong&gt;
+   */
+  public static final String HBASE_COLUMNS_REGEX_MATCHING = &quot;hbase.columns.mapping.regex.matching&quot;;
+  /**
+   * Defines the type for a column.
+   **/
+  public static final String SERIALIZATION_TYPE = &quot;serialization.type&quot;;
+
+  /**
+   * Defines if the prefix column from hbase should be hidden.
+   * It works only when @HBASE_COLUMNS_REGEX_MATCHING is true.
+   * Default value of this parameter is false
+   */
+  public static final String HBASE_COLUMNS_PREFIX_HIDE = &quot;hbase.columns.mapping.prefix.hide&quot;;
+</code></pre>
+<h2 id="5-qa">5 QA</h2>
+<ul>
+<li>HBase 怎么提升缓存命中率，除了缓存命中率，还有什么会影响读性能？</li>
+<li>HBase 如何监控大 Scan？</li>
+<li>HBase 如何进行表级别的监控？</li>
+<li>HBase Hive 外部表如何有效监控管理，避免用户随意 scan 操作？</li>
+</ul>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[HBase - 读懂 bucketcache 日志统计信息]]></title>
+        <id>https://yaofun.top/post/hbase-du-dong-bucketcache-ri-zhi-tong-ji-xin-xi/</id>
+        <link href="https://yaofun.top/post/hbase-du-dong-bucketcache-ri-zhi-tong-ji-xin-xi/">
+        </link>
+        <updated>2022-05-08T15:39:13.000Z</updated>
+        <content type="html"><![CDATA[<p>这是 HBase regionserver 打印的一段 bucket cache 统计信息，里面有些指标有点让人摸不着头脑。下面将通过提问的方式，结合实际业务与源码逐一解释各个指标，分析可以尝试优化的点。</p>
+<blockquote>
+<p>2022-05-09 16:26:31,240 INFO [BucketCacheStatsExecutor] bucket.BucketCache: failedBlockAdditions=20681097, totalSize=60.00 GB, freeSize=6.75 GB, usedSize=53.25 GB, cacheSize=52.43 GB, accesses=41703312106, hits=37430928681, IOhitsPerSecond=1577, IOTimePerHit=0.06, hitRatio=89.76%, cachingAccesses=38812699538, cachingHits=37362791550,cachingHitsRatio=96.26%, evictions=14844, evicted=1384179287, evictedPerRun=93248.40625</p>
+</blockquote>
+<p><strong>问题1 : failedBlockAdditions 是什么？</strong><br>
+写缓存失败的次数，写缓存流程大概如下，失败出现在第 2 步:</p>
+<ol>
+<li>写入 ramCache</li>
+<li>写入 write queue，它是一个阻塞队列 ArrayBlockingQueue。入队 queue.offer() 失败的时候，将失败次数记录写到：failedBlockAdditions</li>
+</ol>
+<p>所以 failedBlockAdditions 是写缓存失败次数，具体是写入 write 队列失败的次数。</p>
+<p><strong>问题1.1 ：为什么会写入队列失败？有何优化的方法？</strong><br>
+查看 ArrayBlockingQueue offer() 方法源码，当队列满了，等待了 timeout 时间后，队列依然是满的，返回 false，入队列失败。<br>
+所以 failedBlockAdditions 一般发生在出现大量请求，导致写缓存繁忙的时候。与之的对应的参数有两个：</p>
+<ol>
+<li>write 线程个数：hbase.bucketcache.writer.threads （默认3)</li>
+<li>每个write 线程队列长度配置：hbase.bucketcache.writer.queuelength（默认32）</li>
+</ol>
+<p>适当调大这两个参数可以缓解此问题。</p>
+<p><strong>问题2：什么是 hitCachingCount？与 hits 有什么区别？hitRatio 与 cachingHitsRatio 的区别？</strong></p>
+<p>hits 是中的缓存命中次数。</p>
+<p>hitCachingCount 统计总的缓存命中次数，但排除显示设定不会更新缓存的请求（setBlockCache(false)），它是 <a href="https://issues.apache.org/jira/browse/HBASE-2253">HBASE-2253</a> 新加的统计指标，代码如下。目的是为了更精确的统计显示使用缓存的命中率。</p>
+<pre><code class="language-java">/**
+* The number of getBlock requests that were cache hits, but only from
+* requests that were set to use the block cache.  This is because all reads
+* attempt to read from the block cache even if they will not put new blocks
+* into the block cache.  See HBASE-2253 for more information.
+*/
+private final AtomicLong hitCachingCount = new AtomicLong(0);
+</code></pre>
+<p>这里需要了解一下 hbase 的 setBlockCache 配置。所有有的读请求，都会先请求缓存。默认配置下，读请求（get、scan），如果未命中缓存会更新数据到缓存。<br>
+但有时候为了性能优化，针对 mr 或者大 scan 用户会设置不缓存数据。设置方式为：scan.setBlockCache(false)。注意，即使设置了 setBlockCache = false ，读请求第一时间也会先查缓存。所以 hitCachingCount 是统计总的缓存命中次数，但排除显示设定不会更新缓存的请求。</p>
+<p>举个例子：<br>
+access: 100 次请求，总命中缓存次数 hits：90 次 hitRatio = 90%<br>
+其中 cachingAccesses = 80， hitCachingCount = 78，cachingHitsRatio=78/80 = 97.5%<br>
+access =100，cachingAccesses = 80，其中有 20 次请求来自于非缓存请求，例如 mr 或者大 scan 请求。<br>
+所以，用户关心的真是缓存命中率为: 97.5%，而不是 90%。</p>
+<p><strong>问题3 ：IOhitsPerSecond、IOTimePerHit 是什么？</strong><br>
+这个是读缓存相关性能指标：</p>
+<ul>
+<li>IOhitsPerSecond： 每秒 bucket io hit 次数</li>
+<li>IOTimePerHit ：每次 IO 的耗时</li>
+</ul>
+<p>通过源码了解到，读缓存的流程：</p>
+<ol>
+<li>首先从 RAMCache 中查找。对于还没有来得及写入到 bucket 的缓存 block，一定存储在RAMCache 中；</li>
+<li>如果在 RAMCache 中没有找到，再在 BackingMap 中根据 blockKey 找到对应物理偏移地址offset；</li>
+<li>根据物理偏移地址 offset 可以直接从内存中查找对应的 block 数据；</li>
+</ol>
+<p>第一步，查找 RAMCache，它是一个 ConcurrentMap，如果命中相当于直接命中内存。<br>
+第二步，通过 ioEngine 去读 bucketcache 缓存，所以通过这一步命中的缓存会记录 IO 耗时，这里的 IO 耗时包括：通过 Bytebuffer 进行数据读取、读取后的数据反序列化耗时。</p>
+<p><strong>问题4：eviction 是什么？什么时候会发生 eviction？</strong><br>
+eviction 字面意思是驱逐，当缓存使用空间 &gt; acceptableSize（）或 一种类型的 block 无法申请的时候，需要释放缓存空间，通过 LRU 算法淘汰，驱逐 block。<br>
+acceptableSize = bucketc ache 配置总大小*0.95</p>
+<pre><code class="language-java">Free the space if the used size reaches acceptableSize() or one size block
+couldn't be allocated. When freeing the space, we use the LRU algorithm and
+ensure there must be some blocks evicted
+</code></pre>
+<p><strong>问题 4.1： evictions=14844, evicted=1384179287, evictedPerRun=93248.40625 分别是什么？</strong><br>
+eviction：发生 evication 的次数<br>
+evicted：总的 evict block 的个数<br>
+evictedPerRun ：evicted/eviction</p>
+<p><strong>问题 5 ：bucket cache size 怎么配置的? 使用情况如何？</strong><br>
+bucket cache size 配置的分布，从小到大是：(4+1)K，(8+1)K ...(64+1)K 到 (2048+1)K<br>
+通过 HBase UI 查看 bucketcache 分布情况，当前申请的 bucket cache size 都是 65K，并且很多 bucket 存储使用率并不高，说明 block 大都是小数据。</p>
+<p><strong>问题 5.1 ：为什么申请的大都是 （64+1）k 的 bucket ？有什么优化点</strong><br>
+这里由于 HBase 默认的 block size 是 64K，说明读请求数据大小大多在 64K block 内。并且，很多 bucket 存储使用率并不高，说明 block 大都是小数据。</p>
+<p>这里有什么可以优化的点呢？<br>
+可以尝试将表的 blocksize 调小。例如 32k。</p>
+<p>参考 HFile 代码注释，HBase 推荐的大小是 8K-1M。设置大有利于顺序扫描，比如 Scan， 但不适合随机查询，想想看，每一次随机查询可能都需要你去解压缩一个大的数据块。</p>
+<p>小的数据块适合随机的查询，但是需要更多的内存来保存数据块的索引(Data Index)，而且创建文件的时候也可能比较慢，因为在每个数据块的结尾我们都要把压缩的数据流 Flush 到文件中去（引起更多的 Flush 操作）。并且由于压缩器内部还需要一定的缓存，最小的数据块大小应该在 20KB – 30KB 左右。设置小有利于随机读。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Before Sunrise - 第一次感受金属乐现场]]></title>
+        <id>https://yaofun.top/post/Before Sunrise - 第一次感受金属乐现场/</id>
+        <link href="https://yaofun.top/post/Before Sunrise - 第一次感受金属乐现场/">
+        </link>
+        <updated>2022-04-29T08:57:44.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="1-缘起">1. 缘起</h2>
+<p>今年年初，在 B 站无意关注了一个成都骑摩托车摩旅去西藏的 UP 主，视频拍的非常棒，幽默有趣，其中一期有一小段 BGM  -《鹿柴》一下就打动到了我，了解了一下，原来这首歌来自成都本土民谣金属乐队：「暮色绽放」。UP 主好像跟这个乐队很熟。</p>
+<p>打开网易云搜到他们的专辑。听了几首，好听，对我的胃口，旋律动听，手风琴的主旋律，带点旋死风格、黑嗓。网易云音乐上还有几段他们的 live 现场。现场氛围太好，遂去他们官博动态上留言，成都什么时候有演出？看了下留言记录时间是： 2022.01.21。当然疫情期间也没抱多大幻想。</p>
+<h2 id="2-春天的噩梦与美梦">2. 春天的噩梦与美梦</h2>
+<p>2 月立春，2022 年 2 月真的是我们的噩梦。一整个月，小朋友，大人都是频繁生病，我和小雨这段时间疲惫不堪，压力巨大。电影《这个啥杀手不太冷》很准确的描述了这个问题：</p>
+<blockquote>
+<p>Is life always this hard,or is it just when you are a kid?<br>
+Always like this.</p>
+</blockquote>
+<p>终于等来了 3 月，春天到了，同时也收到好消息。2022.03.08 这一天，收到一条微博推送，暮色绽放 4.1 号在成都有专场演出，果断第一时间就买了票。</p>
+<h2 id="3-去还是不去">3. 去还是不去</h2>
+<p>买完票就开始自我怀疑了，作为内向的社恐一枚，有点不好意思去现场，看过一些现场视频，「甩头」，「跳水」，「死墙」这个氛围我怕是不太放的开。大家都这么嗨，我不动是不是有点不好意思。算了，硬着头皮上吧，到时候我就站后面边边把。</p>
+<p>演出开始前一天，也就是 2022.03.31 ，成都新冠疫情已经清零快一个月了。没想演出开始前几个小时收到卫健委通知，成都有 3 例阳性在市区逛了几天了，直接上微博热搜了。我想完了，这演出我是去还是不去，做了很久的自我思想工作，犹豫再三，跟小雨也商量了半天，最后决定：去！戴上双层口罩！她也支持我。我的考虑是：错过可能等好几年，这些年管控太严了，大家过的都太压抑了，每天是扫码，口罩为伴，想出川玩都各种限制，病毒不断进化，以后的管控可能更严，指不定是最后一次，我想这一次稍微「任性一次」，去好好享受和释放自我。</p>
+<h2 id="4-尽情释放">4. 尽情释放</h2>
+<p>备上三个口罩，在交子大道地铁口嗦了一碗绵阳米粉，坐上了通往我第一次金属之旅的地铁，终点站 - 4号线，宽窄巷子。下地铁穿过老城小巷，大树成荫，生活的气息，春天的绿色扑面而来。路过魁星楼美食街，新闻里恐慌的疫情通告与美食街依然热闹的人群聚会形成强烈对比，街的尽头就是演出地点：纽空间_NUSPACE ，很漂亮的一小栋玻璃外墙建筑。<br>
+<img src="https://yaofun.top/post-images/1653643416453.png" alt="live house - 纽空间" loading="lazy"></p>
+<p>戴上双层口罩，小心翼翼的进门去，前面摆满了各种文艺衍生品， 老唱片，经典电影，插画。看到这些 CD，脑海中浮现电影《Before Sunrise》里俩人听歌的画面。二楼还可以看展，live house 在后面。艺术氛围挺好的，想想自己的生活，天天就是对着手机，电脑，钢筋混林土，实在乏味，在这里转了一会，有种别样的感觉，觉得自己此时是一个完整的人。<br>
+<img src="https://yaofun.top/post-images/1653643440424.png" alt="文艺气息" loading="lazy"><br>
+等了半天只有零零星星的几个人，有一对的，有单身的女生，有还在用电脑办公的。不过我又开始担心，会不会由于疫情买了票的也不敢来了，整场演出就只有我们这十几号人，那不是会有点尴尬。</p>
+<p>到了 20:00 距演出开始还有半个小时，我检票进去了，典型的 live house 场地，灯光氛围暗黑系，现在只有几个人，除了几对情侣，还有几个「单身」妹子，陆陆续续的来人了，大家都在安静的等待演出开始。我找了个左边靠前的位置站着，我旁边站了一个女生，中短发，都在安静的等待。感觉大家现在都挺拘束的。陆陆续续来的人越来越多，还看到 B 站 UP主，拿着一个运动相机，他老婆和女儿都在现场。很奇妙的感觉。</p>
+<p>等了 40 分钟，现场的死寂被打破，鼓手敲出的巨响，犹如黑暗天空中破晓的日出，世界变的明亮起来，黑暗中的一束希望。</p>
+<p>金属乐的节奏快速，我旁边的妹子，就跟着跳起来了。是的，来之前看着很拘束文静的妹子，就等待着这一刻，释放，融入，放松，头发甩起来，跳起来了。很快进入状态，几乎所有的人都跳起来了，戴着口罩，包括一直内向害羞的我，都开始摇头，蹦跳，头发乱甩。这就是音乐的魅力，作为社畜的我们也压抑太久了，音乐响起，身体跟着舞动，多巴胺疯狂分泌，你不用管身边人的眼光，尽情享受释放，那种感觉太好了。还有一对情侣，中途，就在我面前跳舞，牵着手面对面的那种，他们的快乐让人羡慕。《闻香识女人》的经典画面就在眼前上演。</p>
+<p>很快 2 个小时过去了，演出快结束了，虽然头都摇痛了，但我们还意犹未尽，大家都在喊「安可」（Encore）希望再来一首，他们操着四川话安抚我们：「你们就在刚才唱过的里面再选一首嘛」真的是笑死我了，脾气好、还可爱。我注意到乐队成员（手风琴，鼓手，吉他，贝斯）大部分是成都人，典型的四川人，看着挺生活、随性，你会感觉离他们一点也不遥远。贝斯手看着特别可爱温柔，还有点害羞的样子。</p>
+<h2 id="5-散场">5. 散场</h2>
+<p>散场了，各自回家，外面的街道异常安静，我们被打回现实，刚才有多么快乐，现在就有多么落寞。</p>
+<p>那些内向的、安静的、活泼躁动的、跟我们有着同样小众的爱好的陌生人，各奔天涯。</p>
+<p>之后的日子，城市的疫情又加重了，生活更难了，很难回到那个不戴口罩的时候了。</p>
+<p>回想起来，很庆幸我当时做出的选择，及时行乐，下一次不知是何年。</p>
+<figure data-type="image" tabindex="1"><img src="https://yaofun.top/post-images/1653643459741.png" alt="大合影" loading="lazy"></figure>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Poker 键盘编程]]></title>
+        <id>https://yaofun.top/post/Poker 键盘编程/</id>
+        <link href="https://yaofun.top/post/Poker 键盘编程/">
+        </link>
+        <updated>2022-02-20T15:32:07.000Z</updated>
+        <content type="html"><![CDATA[<p>Poker 用了 5 年多了，这里记录一下如何对 Poker 进行编程，配置优化。<br>
+首先说下我的 Poker 的型号： 2016 版的 Poker 61 键（2016 年 11 月花了 289 RMB 买的 ）<br>
+另外 2017 年好像出了一个 Poker 2，好像稍微有点区别。所以本文所述只针对 2016 年的 Poker 。</p>
+<p>备注：以下都是参考知乎同学的[配置]</p>
+<h2 id="1poker-键盘介绍与相关设置">1.Poker 键盘介绍与相关设置</h2>
+<h3 id="11-层的概念">1.1 层的概念</h3>
+<p><strong>普通层</strong>  普通层就是最常见的那一层。键盘上最大的字母正刻的那个功能。通过图片看，文字正刻在键帽上的功能。所有的键都在普通层有含义。</p>
+<p><strong>FN 层</strong>  也就是组合键 FN + 一个键，实现一个效果，例如 FN + 3 =&gt; F3，可以认为按下 FN 就是进入 FN 层了</p>
+<p><strong>PN 层</strong>  编程层，完全可以编程自定义的一个层。编程给 a 键，就要按 Pn+a 来使用。按下PN 进入 PN 层了，另外，通过右 FN + 右 Shift 可以直接进入 PN 层，直接按 a 等同于是 PN + a</p>
+<h3 id="12-键盘背部开关设置">1.2 键盘背部开关设置</h3>
+<p>首先键盘背部有 4 个开关 1234，功能如下：</p>
+<ol>
+<li>交换 CapLock （大小写）和 Win 键</li>
+<li>将右 Ctrl 变为 ~ 键。因为键盘上 ESC 在它原本的位置，所以默认功能没有这个键。</li>
+<li>将左 Win 变为 Fn。</li>
+<li>编程写保护。相当于锁定编程。</li>
+</ol>
+<h3 id="13-poker-键盘编程方法">1.3 Poker 键盘编程方法</h3>
+<p><strong>编程方法如下：</strong></p>
+<ol>
+<li>按 PMode(FN + 右CTRL) 进入编程模式 (空格右灯闪烁)</li>
+<li>按想要对其编程的键 (空格右灯长亮) （注意：<strong>可以对组合键编程，例如将 FN + L 编程成字符串 ~</strong>）</li>
+<li>键入编程内容然后按 PN (空格右灯再次闪烁)</li>
+<li>重复步骤 2 和步骤 3 可编程其他键</li>
+<li>按 PMode(FN + 右CTRL) 退出编程模式 (空格右灯熄灭) ！</li>
+</ol>
+<p><strong>编程有什么用：</strong><br>
+常用字符串快捷键：例如把 P 编程成你的手机号，通过编程键 Pn + P 就可以输出你的手机号<br>
+对组合键编程：例如将 FN + I 编程成 `</p>
+<h2 id="2-我的使用场景与需求">2 我的使用场景与需求</h2>
+<p>首先说下我的使用场景：Windows 信仰党 + 代码党（半个 Vimer） + 日常聊天摸鱼。</p>
+<p>以下就是我的需求：</p>
+<ol>
+<li>方向键设置（vimer）</li>
+<li>Win 键必须保留（Windows 党）</li>
+<li>常用字符 <strong>~ `</strong> 方便输入 (linux vim shell)</li>
+</ol>
+<h2 id="3-配置与操作">3 配置与操作</h2>
+<h3 id="31-vim-方向键与-win-键保留">3.1 Vim 方向键与 Win 键保留</h3>
+<p>键盘默认的方向键是右下角 FN + WASD 组合键，但右下角按 FN 实在是不方便。<br>
+作为半个 Vimer，最完美的方向键当然是 vim 中的 jkhl，还差个 FN 放哪最合适？<br>
+因为我们打字准备状态是 左手四指放在 ASDF，右手四指放 JKL; 上，所以放 CapLock 的位置，是最顺手的。实现这个需求需要两步：</p>
+<ol>
+<li>把 CapLock 变成 FN</li>
+<li>把方向键 wasd 编程为 jkhl</li>
+</ol>
+<p>同时保留 Win 键。</p>
+<blockquote>
+<p>操作方法：*<em>首先将 CapsLock 编程为 Win 键（参考章节 2 的编程方法），然后打开 DIP 开关 1 和开关 3，</em></p>
+</blockquote>
+<p>这样获得了下图 1 的效果<br>
+<img src="https://yaofun.top/post-images/1653912117677.png" alt="图1：Pn 层的键位设置，灰色表示未被修改的默认配置。除了 CapsLock 变为 Fn，其余都无变化" loading="lazy"><br>
+解释下原理：</p>
+<ol>
+<li>将 CapsLock 编程为 Win 键 ，<strong>PN + CapsLock = WIN</strong></li>
+<li>打开 DIP 开关 1 : 交换 CapLock （大小写）和 Win 键，这样达成的效果是 ：<strong>CapLock 换到 Win 上了</strong>，也就是 : <strong>PN + 左下角的 WIN = WIN</strong>，<strong>这样在 PN 层，直接按 Win 就是 Win 了</strong>。而此次 WIN 换到 CapLock 的位置了。</li>
+<li>打开 DIP 开关 3：将左 Win 变为 Fn，也就是 <strong>CapLock 位置变成 FN</strong> 了。这样在普通层就没有 Win 了。</li>
+</ol>
+<p>至此，<strong>PN 层保留了 WIN ，同时 FN 换到了 CapsLock 的位置。我们可以工作在 PN 层</strong>（通过 右 FN + 右 Shift 打开，空格键会亮灯提示），剩下的步骤就是编程组合键。</p>
+<h3 id="32-方向键与常用键的设置">3.2 方向键与常用键的设置</h3>
+<p><strong>方向键</strong>：将 FN + WASD 编程为 FN + HJKL</p>
+<blockquote>
+<p>操作方法：参考 章节 2 的编程方式，唯一要注意的是，编程的源和目标都是组合键。<br>
+左键：FN + A =&gt; FN + H<br>
+下键：FN + S =&gt; FN + K<br>
+右键：FN + D =&gt; FN + L<br>
+上键：FN + W =&gt; FN + J</p>
+</blockquote>
+<p><strong>常用字符编程</strong><br>
+~ 编程为：FN + ；</p>
+<blockquote>
+<p>操作：这里可以把 DP 2开关打开，将右 Ctrl 变为 ~ 键，然后编程 右 CTRL =&gt; FN + ;</p>
+</blockquote>
+<p>` 编程为：FN + ‘</p>
+<blockquote>
+<p>操作：编程 ：FN + ESC =&gt; FN + ‘</p>
+</blockquote>
+<p>其他的键也用同样的方式编程，FN + xx 的方式。PN 层最终效果如下图：<img src="https://yaofun.top/post-images/1653912185238.png" alt="PN 层最终效果" loading="lazy"></p>
+<p>参考：<a href="https://www.zhihu.com/question/24453206/answer/336408615">https://www.zhihu.com/question/24453206/answer/336408615</a></p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Apache Zeppelin 0.7 to 0.9 版本升级 - 源码编译]]></title>
+        <id>https://yaofun.top/post/Apache Zeppelin 0.7 to 0.9 版本升级 - 源码编译/</id>
+        <link href="https://yaofun.top/post/Apache Zeppelin 0.7 to 0.9 版本升级 - 源码编译/">
+        </link>
+        <updated>2021-09-27T12:41:30.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="maven-编译打包">maven 编译打包</h2>
+<p>首先可以参考官方文档：<br>
+https://zeppelin.apache.org/docs/latest/setup/basics/how_to_build.html#run-end-to-end-tests</p>
+<p>最开始，如果是打一个完整的包含所有模块的可运行的 tar 包，用 maven 命令：<br>
+<code>mvn clean package -Pbuild-distr -DskipTests</code><br>
+之后，如果只需要单独对某个模块编译可以使用命令：<br>
+<code>mvn clean package -DskipTests -pl zeppelin-server</code><br>
+由于 Zeppelin 项目模块众多，整个编译打包过程较为耗时，中途也出现了不少问题：</p>
+<p>附 maven 构建参数列表如下：</p>
+<pre><code>C:\dev\apache-maven-3.5.0\bin&gt; .\mvn --help
+
+usage: mvn [options] [&lt;goal(s)&gt;] [&lt;phase(s)&gt;]
+
+Options:
+ -am,--also-make                        If project list is specified, also
+                                        build projects required by the
+                                        list
+ -amd,--also-make-dependents            If project list is specified, also
+                                        build projects that depend on
+                                        projects on the list
+ -B,--batch-mode                        Run in non-interactive (batch)
+                                        mode (disables output color)
+ -b,--builder &lt;arg&gt;                     The id of the build strategy to
+                                        use
+ -C,--strict-checksums                  Fail the build if checksums don't
+                                        match
+ -c,--lax-checksums                     Warn if checksums don't match
+ -cpu,--check-plugin-updates            Ineffective, only kept for
+                                        backward compatibility
+ -D,--define &lt;arg&gt;                      Define a system property
+ -e,--errors                            Produce execution error messages
+ -emp,--encrypt-master-password &lt;arg&gt;   Encrypt master security password
+ -ep,--encrypt-password &lt;arg&gt;           Encrypt server password
+ -f,--file &lt;arg&gt;                        Force the use of an alternate POM
+                                        file (or directory with pom.xml)
+ -fae,--fail-at-end                     Only fail the build afterwards;
+                                        allow all non-impacted builds to
+                                        continue
+ -ff,--fail-fast                        Stop at first failure in
+                                        reactorized builds
+ -fn,--fail-never                       NEVER fail the build, regardless
+                                        of project result
+ -gs,--global-settings &lt;arg&gt;            Alternate path for the global
+                                        settings file
+ -gt,--global-toolchains &lt;arg&gt;          Alternate path for the global
+                                        toolchains file
+ -h,--help                              Display help information
+ -l,--log-file &lt;arg&gt;                    Log file where all build output
+                                        will go (disables output color)
+ -llr,--legacy-local-repository         Use Maven 2 Legacy Local
+                                        Repository behaviour, ie no use of
+                                        _remote.repositories. Can also be
+                                        activated by using
+                                        -Dmaven.legacyLocalRepo=true
+ -N,--non-recursive                     Do not recurse into sub-projects
+ -npr,--no-plugin-registry              Ineffective, only kept for
+                                        backward compatibility
+ -npu,--no-plugin-updates               Ineffective, only kept for
+                                        backward compatibility
+ -nsu,--no-snapshot-updates             Suppress SNAPSHOT updates
+ -o,--offline                           Work offline
+ -P,--activate-profiles &lt;arg&gt;           Comma-delimited list of profiles
+                                        to activate
+ -pl,--projects &lt;arg&gt;                   Comma-delimited list of specified
+                                        reactor projects to build instead
+                                        of all projects. A project can be
+                                        specified by [groupId]:artifactId
+                                        or by its relative path
+ -q,--quiet                             Quiet output - only show errors
+ -rf,--resume-from &lt;arg&gt;                Resume reactor from specified
+                                        project
+ -s,--settings &lt;arg&gt;                    Alternate path for the user
+                                        settings file
+ -t,--toolchains &lt;arg&gt;                  Alternate path for the user
+                                        toolchains file
+ -T,--threads &lt;arg&gt;                     Thread count, for instance 2.0C
+                                        where C is core multiplied
+ -U,--update-snapshots                  Forces a check for missing
+                                        releases and updated snapshots on
+                                        remote repositories
+ -up,--update-plugins                   Ineffective, only kept for
+                                        backward compatibility
+ -v,--version                           Display version information
+ -V,--show-version                      Display version information
+                                        WITHOUT stopping build
+ -X,--debug                             Produce execution debug output
+</code></pre>
+<h2 id="1部分依赖源下载慢的问题">1.部分依赖源下载慢的问题</h2>
+<p>spark flink 的包比较大，几百兆，可以将官方 apache 地址清华的源：</p>
+<ol>
+<li>rlang/pom.xml</li>
+</ol>
+<ul>
+<li>标签 spark.src.download.url 替换<br>
+https://mirrors.tuna.tsinghua.edu.cn/apache/spark/<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mrow><mi>s</mi><mi>p</mi><mi>a</mi><mi>r</mi><mi>k</mi><mi mathvariant="normal">.</mi><mi>a</mi><mi>r</mi><mi>c</mi><mi>h</mi><mi>i</mi><mi>v</mi><mi>e</mi></mrow><mi mathvariant="normal">/</mi></mrow><annotation encoding="application/x-tex">{spark.archive}/</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathdefault">s</span><span class="mord mathdefault">p</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord">.</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">c</span><span class="mord mathdefault">h</span><span class="mord mathdefault">i</span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span><span class="mord mathdefault">e</span></span><span class="mord">/</span></span></span></span>{spark.archive}.tgz</li>
+<li>spark.bin.download.url 替换<br>
+https://mirrors.tuna.tsinghua.edu.cn/apache/spark/<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mrow><mi>s</mi><mi>p</mi><mi>a</mi><mi>r</mi><mi>k</mi><mi mathvariant="normal">.</mi><mi>a</mi><mi>r</mi><mi>c</mi><mi>h</mi><mi>i</mi><mi>v</mi><mi>e</mi></mrow><mi mathvariant="normal">/</mi></mrow><annotation encoding="application/x-tex">{spark.archive}/</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathdefault">s</span><span class="mord mathdefault">p</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord">.</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">c</span><span class="mord mathdefault">h</span><span class="mord mathdefault">i</span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span><span class="mord mathdefault">e</span></span><span class="mord">/</span></span></span></span>{spark.archive}-bin-without-hadoop.tgz</li>
+</ul>
+<ol start="2">
+<li>spark/pom.xml</li>
+</ol>
+<ul>
+<li>替换 spark.src.download.ur<br>
+https://mirrors.tuna.tsinghua.edu.cn/apache/spark/<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mrow><mi>s</mi><mi>p</mi><mi>a</mi><mi>r</mi><mi>k</mi><mi mathvariant="normal">.</mi><mi>a</mi><mi>r</mi><mi>c</mi><mi>h</mi><mi>i</mi><mi>v</mi><mi>e</mi></mrow><mi mathvariant="normal">/</mi></mrow><annotation encoding="application/x-tex">{spark.archive}/</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathdefault">s</span><span class="mord mathdefault">p</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord">.</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">c</span><span class="mord mathdefault">h</span><span class="mord mathdefault">i</span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span><span class="mord mathdefault">e</span></span><span class="mord">/</span></span></span></span>{spark.archive}.tgz</li>
+<li>替换 spark.bin.download.url<br>
+https://mirrors.tuna.tsinghua.edu.cn/apache/spark/<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mrow><mi>s</mi><mi>p</mi><mi>a</mi><mi>r</mi><mi>k</mi><mi mathvariant="normal">.</mi><mi>a</mi><mi>r</mi><mi>c</mi><mi>h</mi><mi>i</mi><mi>v</mi><mi>e</mi></mrow><mi mathvariant="normal">/</mi></mrow><annotation encoding="application/x-tex">{spark.archive}/</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathdefault">s</span><span class="mord mathdefault">p</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord">.</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">c</span><span class="mord mathdefault">h</span><span class="mord mathdefault">i</span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span><span class="mord mathdefault">e</span></span><span class="mord">/</span></span></span></span>{spark.archive}-bin-without-hadoop.tgz</li>
+</ul>
+<ol start="3">
+<li>flink/pom.xml</li>
+</ol>
+<ul>
+<li>flink.bin.download.url<br>
+https://mirrors.tuna.tsinghua.edu.cn/apache/flink/flink-<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mrow><mi>f</mi><mi>l</mi><mi>i</mi><mi>n</mi><mi>k</mi><mi mathvariant="normal">.</mi><mi>v</mi><mi>e</mi><mi>r</mi><mi>s</mi><mi>i</mi><mi>o</mi><mi>n</mi></mrow><mi mathvariant="normal">/</mi><mi>f</mi><mi>l</mi><mi>i</mi><mi>n</mi><mi>k</mi><mo>−</mo></mrow><annotation encoding="application/x-tex">{flink.version}/flink-</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">i</span><span class="mord mathdefault">n</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord">.</span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">s</span><span class="mord mathdefault">i</span><span class="mord mathdefault">o</span><span class="mord mathdefault">n</span></span><span class="mord">/</span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">i</span><span class="mord mathdefault">n</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord">−</span></span></span></span>{flink.version}-bin-scala_${scala.binary.version}.tgz</li>
+</ul>
+<p>当然如果有必要也可以使用科学上网，配置git npm IDEA 等组件的代理，配置方式具体参考官网文档，例如 git ：</p>
+<blockquote>
+<p>git config --global http.proxy http://localhost:1080<br>
+git config --global https.proxy http://localhost:1080<br>
+git config --global url.&quot;http://&quot;.insteadOf git://</p>
+</blockquote>
+<p>npm 代理配置：</p>
+<blockquote>
+<p>npm config set proxy http://localhost:1080<br>
+npm config set https-proxy http://localhost:1080<br>
+npm config set registry &quot;http://registry.npmjs.org/&quot;<br>
+npm config set strict-ssl false</p>
+</blockquote>
+<h2 id="2-maven-git-commit-id-plugin-这步很慢">2. maven git-commit-id-plugin 这步很慢</h2>
+<p>将以下参数改为 true：<br>
+&lt;plugin.gitcommitid.useNativeGit&gt;true&lt;/plugin.gitcommitid.useNativeGit&gt;<br>
+Zeppeline 默认值 false, 改为 true 使用系统的 git，而不是内置的 jGit，具体还不清楚 jGit 慢的原因，修改之后就不会在这一步卡了，实在不行也可以把这个 git-commit-id-plugin plugin 注释掉。</p>
+<p>这个是 maven git 插件，可以将包的 git 信息打到指定目录</p>
+<pre><code class="language-xml">&lt;plugin&gt;
+        &lt;groupId&gt;pl.project13.maven&lt;/groupId&gt;
+        &lt;artifactId&gt;git-commit-id-plugin&lt;/artifactId&gt;
+        &lt;version&gt;${plugin.git.commit.id.version}&lt;/version&gt;
+        &lt;executions&gt;
+          &lt;execution&gt;
+            &lt;goals&gt;
+              &lt;goal&gt;revision&lt;/goal&gt;
+            &lt;/goals&gt;
+          &lt;/execution&gt;
+        &lt;/executions&gt;
+        &lt;configuration&gt;
+          &lt;skipPoms&gt;false&lt;/skipPoms&gt;
+          &lt;dotGitDirectory&gt;${project.basedir}/.git&lt;/dotGitDirectory&gt;
+          &lt;useNativeGit&gt;${plugin.gitcommitid.useNativeGit}&lt;/useNativeGit&gt;
+          &lt;generateGitPropertiesFile&gt;true&lt;/generateGitPropertiesFile&gt;
+          &lt;generateGitPropertiesFilename&gt;${project.build.outputDirectory}/git.properties&lt;/generateGitPropertiesFilename&gt;
+          &lt;failOnNoGitDirectory&gt;false&lt;/failOnNoGitDirectory&gt;
+          &lt;dateFormat&gt;yyyy-MM-dd HH:mm:ss&lt;/dateFormat&gt;
+        &lt;/configuration&gt;
+&lt;/plugin&gt;
+</code></pre>
+<h2 id="3-zeppelin-web-编译">3. zeppelin-web 编译</h2>
+<p>建议参考官方文档：https://github.com/apache/zeppelin/tree/master/zeppelin-web</p>
+<p>Zeppelin 前端编译耗时也很长，编译中途出现了不少报错，例如：</p>
+<p>报错 1：error Expected linebreaks to be 'LF' but found 'CRLF' linebreak-style<br>
+修复：在 .eslintrc 文件 rules 里面 配置 &quot;linebreak-style&quot;: [0 ,&quot;error&quot;, &quot;windows&quot;],</p>
+<p>报错 2：error Expected indentation of 10 spaces but found 8 indent<br>
+修复：修改 .eslintrc.js 文件 rules 字段下增加 &quot;indent&quot;: [&quot;off&quot;, 20]</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Apache Zeppelin 0.7 to 0.9 版本升级 - 问题记录]]></title>
+        <id>https://yaofun.top/post/Apache Zeppelin 0.7 to 0.9 版本升级 - 问题记录/</id>
+        <link href="https://yaofun.top/post/Apache Zeppelin 0.7 to 0.9 版本升级 - 问题记录/">
+        </link>
+        <updated>2021-09-26T12:34:44.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="0-旧版本问题">0. 旧版本问题</h2>
+<p>当前公司内部的 Zeppelin 0.7.2 的版本用了有 3 年多，累计了一些无法问题，亟待解决：</p>
+<ol>
+<li>不支持 spark 2.2 以上的版本，spark 2.2 存在执行结束不释放 yarn 资源的严重 bug</li>
+<li>不支持 yarn cluster 模式，导致所有 driver 都在 server 节点，可能出现资源瓶颈 [<a href="https://issues.apache.org/jira/browse/ZEPPELIN-2898">ZEPPELIN-2898</a>]</li>
+<li>笔记本（notebook）多了之后（5000+），Server 启动速度很慢，长达数分钟，笔记本加载也偶现卡顿问题</li>
+<li>Server 存在单点故障问题，不支持高可用</li>
+<li>当前代码编辑自动补全不够友好，不支持 TAB 补全 [<a href="https://issues.apache.org/jira/browse/ZEPPELIN-277">ZEPPELIN-277</a>]</li>
+<li>前端容易卡住</li>
+<li>每次更新 interpreter ，整个 interpreter 都需要重启，在多租户场景下不够友好，直观感受就是用一段时间查询就很慢（时间耗在了第一次启动 interperter 上面）。 [<a href="https://issues.apache.org/jira/browse/ZEPPELIN-1770">ZEPPELIN-1770</a>]</li>
+</ol>
+<p>通过一番调研，以上大部分问题在 0.9 版本得以解决，除此之外 0.9 还支持了很多新的特性，例如：</p>
+<ol>
+<li>shell 解释器 支持 terminal 交互式模式，也就是 web terminal ，用户体验大大提升</li>
+<li>新增多种解释器包括：Groovy Interpreter [<a href="https://issues.apache.org/jira/browse/ZEPPELIN-2176">ZEPPELIN-2176</a>]</li>
+<li>notebook 重构，性能优化，存储支持 MongoDB 等存储引擎</li>
+</ol>
+<p>下载源码，编译打包（参考之前的文章），部署之后遇到了很多问题，记录如下：</p>
+<h2 id="1-开启-kerberos-找不到-tgt-问题">1. 开启 kerberos 找不到 tgt 问题</h2>
+<p>对于开启 kerberos 的环境，启动 interperter 前，已经 kinit 认证过了，再提交任务，还是报错找不到 tgt，这种方式再 0.7.2 版本都是可行的，目前不清楚升级之后找不到的原因。由于之前遇到过类似的问题，这里通过配置的方式解决：zeppeiln-env.sh 增加以下 Java 参数配置，支持从本地缓存获取 kerberos ticket :<br>
+<code>-Djavax.security.auth.useSubjectCredsOnly=false</code><br>
+这个参数的解释<a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/jgss/tutorials/BasicClientServer.html#useSub">官网文档</a></p>
+<h2 id="2-新版本-hive-jdbc-proxyuser-配置的变化">2. 新版本 hive jdbc proxyuser 配置的变化</h2>
+<p>对于非开启 kerberos 的环境， hive jdbc interperter 需要配置代理用户，旧版本的配置方式已经不适用了，新版本的配置，可以参考官网文档，配置  hive.server2.proxy.user</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">Name</th>
+<th style="text-align:center">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">default.driver</td>
+<td style="text-align:center">org.apache.hive.jdbc.HiveDriver</td>
+</tr>
+<tr>
+<td style="text-align:center">default.url</td>
+<td style="text-align:center">jdbc:hive2://localhost:10000</td>
+</tr>
+<tr>
+<td style="text-align:center">default.user</td>
+<td style="text-align:center">hive_user</td>
+</tr>
+<tr>
+<td style="text-align:center">default.password</td>
+<td style="text-align:center">hive_password</td>
+</tr>
+<tr>
+<td style="text-align:center">default.proxy.user.property</td>
+<td style="text-align:center">hive.server2.proxy.user</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3-notebook-迁移">3. notebook 迁移</h2>
+<h3 id="31-旧数据迁移过程">3.1 旧数据迁移过程</h3>
+<p>新版 Zeppelin 提供了 notebook 的迁移脚本 (bin 目录下的 upgrade-note.sh 脚本)，迁移主要依赖于此脚本，另外此次也将本地存储换成了 mongoDB：</p>
+<ol>
+<li>拷贝 conf 下的和 notebook 下的所有笔记到新版本的对应目录</li>
+<li>通过脚本清理 2019 年以前以及超大存储的 note</li>
+<li>执行升级 note 命令 bin/upgrade-note.sh -d （由于0.9版本对 note 结构和命令有修改）</li>
+<li>删除异常的 note 文件类型，不然会导致 notebook server 运行时异常，rm notebook/_*</li>
+<li>通过 python 脚本更新  notebook-authorization.json （0.8 版本对权限做了变更，新增了 runner 角色）</li>
+<li>停止 zeppelin-server，修改 conf/zeppelin-env.sh , 配置存储为 mongodb</li>
+<li>MongoDB 中新增库 ：use xxdb</li>
+<li>重启 zeppelin server 后 会自动交本地的 notebook 迁移至 MongoDB</li>
+</ol>
+<h3 id="32-升级-notebook-权限问题">3.2 升级 notebook 权限问题</h3>
+<p>Zeppelin 0.8.x 版本笔记本的权限模块做了一些重构，新增了 runner 角色，导致新版本迁移过去不兼容，参考官网 <a href="https://issues.apache.org/jira/browse/ZEPPELIN-3646?jql=project%20%3D%20ZEPPELIN%20AND%20text%20~%20upgrade">issue</a> 的解决方案</p>
+<p>所以 conf/notebook-authorization.json 里面需要新增 runners，不然无法识别权限。</p>
+<p>通过一段 python 脚本可以更新解决</p>
+<pre><code class="language-python">import json
+
+note_auth_json_file = 'PATH_TO_ZEPPELIN/conf/notebook-authorization.json'
+
+f = open(note_auth_json_file, 'r')
+note_auth_json = json.loads(f.read())
+f.close()
+
+for note_id in note_auth_json['authInfo']:
+    print(note_id)
+    if 'writers' in note_auth_json['authInfo'][note_id] \
+        and 'runners' not in note_auth_json['authInfo'][note_id]:
+        note_auth_json['authInfo'][note_id]['runners'] = note_auth_json['authInfo'][note_id]['writers']
+        print(note_auth_json['authInfo'][note_id]['runners'])
+
+f = open(note_auth_json_file, 'w')
+f.write(json.dumps(note_auth_json))
+f.close()
+</code></pre>
+<h3 id="33-note-默认绑定解释器丢失问题">3.3 note 默认绑定解释器丢失问题</h3>
+<p>每个 notebook 都有默认的 interperter ，例如创建一个 spark 类型的笔记本后，默认解释器就是 spark，写代码无需在第一行通过 %spark 的方式手动指定。迁移新版后后用户默认的绑定器解释器丢失，全部都变成了 spark，导致非 spark 类的 note 不能按照预期正常运行。</p>
+<p>找到了官方 <a href="https://issues.apache.org/jira/browse/ZEPPELIN-5309">issue</a> , 但是没人解决，这里我写了个 python 脚本修复这个问题，也提交给了 apache。</p>
+<p>首先获取老版本的映射关系，遍历所有笔记更新 json 文件，然后将默认的解释器绑定写到新的 note json 里面。</p>
+<pre><code class="language-python"># -*- coding: utf-8 -*-
+import json
+import os
+import subprocess
+
+old_interpreter_file = './interpreter.json'
+
+f = open(old_interpreter_file, 'r')
+int_json = json.loads(f.read())
+f.close()
+
+dict = {}
+for interpreter_id in int_json['interpreterSettings']:
+    dict[interpreter_id] = int_json['interpreterSettings'][interpreter_id]['name']
+
+for note_id in int_json['interpreterBindings']:
+    path = &quot;./notebook/*_&quot; + note_id + &quot;.zpln&quot;
+
+    process = subprocess.Popen(&quot;find ./notebook -type f -name \&quot;*&quot; + note_id +&quot;.zpln\&quot;&quot;, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    exit_code = process.wait()
+    file=stdout.decode(&quot;utf-8&quot;).strip()
+
+    if file:
+      print(&quot;find file: &quot; + file)
+      print(&quot;note_id:&quot; + note_id + &quot; default binding interpreter is: &quot; + dict[int_json['interpreterBindings'][note_id][0]])
+      nf = open(file, 'r')
+
+      note_json = json.loads(nf.read())
+      note_json[&quot;defaultInterpreterGroup&quot;] = dict[int_json['interpreterBindings'][note_id][0]]
+      nf.close()
+          
+      f = open(file, 'w')
+      f.write(json.dumps(note_json,indent=4))
+      f.close()
+</code></pre>
+<h2 id="4-shiro-新增配置导致自动登录失败问题">4. shiro 新增配置导致自动登录失败问题</h2>
+<p>目前 shiro 配置是除了 api/version 之外的所有的请求都要走认证</p>
+<pre><code>/api/version = anon
+/** = authc
+</code></pre>
+<p>而 /api/cluster/address 是新版本新增的一个接口，这个请求比自动登录要早，走认证会自动跳转到 /api/login 这个导致自动登录失败</p>
+<p>shiro.ini 新增以下配置解决</p>
+<p><code>/api/cluster/address = anon</code></p>
+<h2 id="5-查询结果无法选中复制">5 查询结果无法选中复制</h2>
+<p>Zeppelin 升级前端框架导致，从普通的 table 表单升级到 ui-grid 。查询结果不方便复制，即使复制也不带格式。</p>
+<p>新增全选复制到剪切板功能，限制函数 500 行。</p>
+<p>修改 visualization-table.js 修改如下：</p>
+<pre><code>   gridOptions.enableRowSelection = true;
+   gridOptions.enableSelectAll = true;
+</code></pre>
+<pre><code class="language-javascript">// add copy to clipboard by yao
+gridApi.selection.on.rowSelectionChanged(scope, function(row) {
+  console.log(row);
+  Object.keys(row.entity).forEach((key) =&gt; {
+    if (key === '$$hashKey') {
+      delete row.entity[key];
+    }
+  });
+  console.log(Object.values(row.entity).join('\n'));
+  let aux = document.createElement('input');
+  aux.setAttribute('value', Object.values(row.entity).join('\t'));
+  document.body.appendChild(aux);
+  aux.select();
+  document.execCommand('copy');
+  document.body.removeChild(aux);
+});
+
+gridApi.selection.on.rowSelectionChangedBatch(scope, function(rows) {
+  console.log(rows);
+
+  rows.map((row) =&gt; {
+    Object.keys(row.entity).forEach((key) =&gt; {
+      if (key === '$$hashKey') {
+        delete row.entity[key];
+      }
+    });
+  });
+
+  let result = Object.keys(rows[0].entity).map((r) =&gt; {
+    return r.slice(0, r.length - 1);
+  }).join('\t') + '\n';
+  for (let i = 0; i &lt; rows.length; ++i) {
+    if (i &gt; 500) {
+      break;
+    }
+    result += Object.values(rows[i].entity).join('\t');
+    if (i &lt; rows.length - 1) {
+      result += '\n';
+    }
+  }
+  let aux = document.createElement('textarea');
+  aux.value = result;
+  document.body.appendChild(aux);
+  aux.select();
+  document.execCommand('copy');
+  document.body.removeChild(aux);
+});
+</code></pre>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Apple Wacth 初体验]]></title>
+        <id>https://yaofun.top/post/Apple Wacth 初体验/</id>
+        <link href="https://yaofun.top/post/Apple Wacth 初体验/">
+        </link>
+        <updated>2021-03-25T09:52:57.000Z</updated>
+        <content type="html"><![CDATA[<!-- more -->
+<p>今天来聊聊我这段时间使用 Apple Watch 的一些使用体验与感受。</p>
+<h2 id="使用体验">使用体验</h2>
+<p>差不多每年都会购置一些数码产品：iPad，Switch，Airpods 等还有一些小家电，其中 AirPods 用了有 2 年多，不得不说 AirPods 无线耳机是我这 3 年来购买的最有价值的产品，苹果的产品体验真的是做到极致。当时买它也是犹豫很久，这么贵的耳机，直到用了后是真香，可以说是革命性的产品。</p>
+<p>同样也是犹豫很久，终于下定决心下单了 Apple Watch Series 6，说实话，购买前也没期待通过它去督促自己健身运动，放下手机，健康生活之类的，毕竟这种想法太天真了，但是使用了近一个月，体验下来，感觉这 3000+ 大洋，花的值了。</p>
+<p>先说说我之前的生活状态把：</p>
+<ol>
+<li>运动少，喝水少（肾结石患者）。</li>
+<li>熬夜，晚睡（2点+)，晚起，很少吃早餐（公司有很好的早餐，但是赶不上），上班迟到（虽然是弹性打卡，比一般同事要晚）。</li>
+<li>沉迷网络爆炸的信息世界（微博，微信，知乎，B站），平均每天使用手机 8 小时+，视力也有一些下降。</li>
+</ol>
+<p>相信很多人是跟我类似的生活习惯节奏，当我使用 Apple Watch 后，确实生活习惯有了一些改善。</p>
+<h3 id="使用-apple-watch-后的一些体验">使用 Apple Watch 后的一些体验：</h3>
+<ol>
+<li>减少看手机时间： 8 hour / day -&gt; 5 hour / day。</li>
+<li>每天开始运动，户外步行、跑步 3-4 公里，已经连续坚持 21 天， Apple Watch 有非常完善，友好、聪明的激励机制，鼓励你去运动，闭合圆环。</li>
+<li>有意识的喝水，从平均每天饮水量 500ML 提高到 1000 ML+（国家卫生健康组织建议成年人一天保持 2000ML 的摄水量）。</li>
+<li>久坐提醒：久坐会提醒起来，活动一分钟，现在工作坐一个小时就会起来活动一会。</li>
+<li>便捷刷地铁，公交。</li>
+<li>戴口罩也可以人脸解锁手机。</li>
+<li>每天几次深呼吸，深度放松身心。</li>
+<li>睡眠监测，监控睡眠质量，通过心率检测，血氧检测可以精准记录睡眠质量，深度睡眠，浅睡状态等。</li>
+<li>手表起床闹铃：手表震动叫醒，比铃声更舒服。</li>
+<li>开车导航，遇到转弯，路口等，手表会震动反馈提醒，避免错过。</li>
+</ol>
+<p>的确，用了之后生活健康了一些，同时这段时间也有很多思考。</p>
+<h2 id="放下手机">放下手机</h2>
+<p>这是一个网络信息爆炸的时代，慢慢的，你生活的全部被手机与网络吞噬：划不完的微博，新闻，了点，永远没有尽头的短视频，微信消息，B站，之后是无尽的空虚。</p>
+<p>日复一日，慢慢变得没有耐心，静不下来，没有耐心去看完一篇长文，看一会书，做一件事；作息紊乱，熬夜晚睡，身体变差。</p>
+<p>自制力差，这样的生活无尽的循环，对这样的自己越来越失望。</p>
+<h2 id="感受跑步">感受跑步</h2>
+<p>这项运动真的不容易坚持下去，枯燥，累。</p>
+<p>刷 30 分钟手机，视频、微博，时间唰唰唰的就过去了，每天的时间基本都被这些 30 分钟的片段占满。时间飞逝，感觉时间总是不够用，刷完之后也不知道刷了个啥。</p>
+<p>跑步 30 分钟，你会觉得时间像蜗牛一样缓慢蠕动，但就是这短短 30 分钟会给你的生活带来一些积极的改变。</p>
+<p>每天下去跑步的心路历程：</p>
+<ul>
+<li>开头 1、2 公里，好累，有点跑不动，我为什么要自虐呢，躺着、坐着多舒服啊。</li>
+<li>坚持吧，已经坚持 20 天了，安静的夜晚，一个人跑着步，听着歌，若有所思，咦，这首歌还挺好听的，以前没发现呢。又发现一首好听的新歌，巴拉巴拉。</li>
+<li>咦，跑着跑着就没那么累了，还可以再跑两圈，加油。</li>
+<li>哇，都跑 30 多分钟了，这要是玩手机一下就过了，我这 30 分钟，运动，出汗，思考，听了这么多好听的歌，今晚应该能睡得更香。</li>
+<li>Apple Watch 圆环闭合了，我又多坚持了一天，这样的自己真棒。</li>
+</ul>
+<p><img src="https://yaofun.top/post-images/1653645392043.png" alt="提醒" loading="lazy"><br>
+这就是整个心路历程，最重要的是能放下手机，能让自己好好静静，思考问题。这是一种 “自虐”，也是一种放松，一种自我提升。一天中难得的逃离“网络”世界的片刻。跑着跑着会觉得这样的自己更积极，更乐观，更健康。</p>
+<h2 id="希望">希望</h2>
+<p>给自己的打分的话，目前只能是 50 分不及格，希望逐步提升，实现更好的自我认知。<br>
+能做更好的自己，健康生活。把时间多留给更加有益的事情上，例如阅读提升，学习吉他等等，加油。</p>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Apache Zeppelin 基于 kerberos 多租户集成]]></title>
+        <id>https://yaofun.top/post/Apache Zeppelin 基于 kerberos 多租户集成/</id>
+        <link href="https://yaofun.top/post/Apache Zeppelin 基于 kerberos 多租户集成/">
+        </link>
+        <updated>2019-04-22T12:13:51.000Z</updated>
+        <content type="html"><![CDATA[<h2 id="0-前言">0 前言</h2>
+<p>构建大数据平台初期，我们的数据分析师做数据开发需要 ssh 到机器上，面对黑黑的 terminal 进行开发，为了提升开发效率，架构师让我开发一个 hive 可视化查询页面，支持 hive 查询，数据可视化，数据导出等。本着开发前先调研轮子的原则，一番调研到了两个轮子：</p>
+<ul>
+<li>Hue ： cloudera 生态自带组件，功能强大，但是仅限于 cloudera 生态圈</li>
+<li>Zeppelin ：Apache 开源顶级项目，支持 hive spark 相关开发，支持数据导出，数据可视化等。同时还支持一系列组件；</li>
+</ul>
+<p>ok，少造轮子，拥抱开源，我就把 Zeppelin 第一版本（0.6.0）搭起来了，当然，途中也遇到不少坑。</p>
+<p>在 shiro 中配置了一个 admin 用户，大家都可以登陆，进行 Spark Hive 开发和数据可视化等。（印象中 0.6.0 版本都不支持配置用户？）<br>
+这个版本的问题是：所以人都是一个账号登陆，同样的权限执行 hive  spark 类任务。用户的权限没有隔离，对于大型企业来说会带来一系列安全隐患，这也是数据平台都要面对问题。这样，多租户应运而生。</p>
+<h2 id="1-多租户">1 多租户</h2>
+<p>每个用户对应一个独立账号 - user，用户归为一个分组 - group，权限通过linux hdfs 组来控制（linux 用户文件系统 group 和 hdfs group）</p>
+<h3 id="11-iam">1.1 IAM</h3>
+<p>自研统一身份认证服务 IAM (Identity and Access Management )，提供身份认证和权限管理功能，可以管理用户（比如员工、系统或应用程序）账号，对账号的权限资源范围进行控制</p>
+<p>IAM 根据用户职责规划用户组，并根据职责为用户组授权，再将用户加入到用户组中，使得用户具有所属用户组中的权限。</p>
+<p>当前 IAM 用户的组（项目）来确定，创建用户后，分配对应的组，创建对应的权限。<br>
+先创建一个组（group）- 项目 - music</p>
+<ul>
+<li>元数据存储</li>
+<li>hdfs 目录创建项目的根目录， /data/music ，目录权限为 755 组为：music</li>
+</ul>
+<p>新建一个用户 yao，所属组 (项目) music。</p>
+<ul>
+<li>存储用户名，密码，分组等元数据</li>
+<li>将用户，组相关信息 写入 LDAP，供后续 SSSD 使用</li>
+</ul>
+<h3 id="12-ldap-kerberos-sssd">1.2 LDAP + Kerberos + SSSD</h3>
+<p>认证体系一般包含账号，认证，授权，审计这些部分组成。LDAP 用来做账号管理，Kerberos作为认证。授权一般来说是由应用来决定的，通过在 LDAP 数据库中配置一些属性可以让应用程序来进行授权判断。</p>
+<p>单纯基于 LDAP 已经能实现集中的帐号和认证管理了，但考虑到 LDAP 里的密码信息是直 接存储在数据库中，在认证时需要将用户名和密码直接发送给 LDAP 服务器，在不安全和可信的环境下这种模式会有安全隐患。</p>
+<p>因此使用 Kerberos 来实现用户认证。Kerberos 相关的数据也需要存储在某个数据库中，在这里我们选择使用 LDAP 作为其数据库，目的是为了数据备份的方便（只需要统一备份 LDAP 数据库即可）。</p>
+<p>linux 上的认证授权基于 SSSD 来实现，SSSD 可以接入 LDAP 的数据，我们可以通过官方介绍有一个比较清晰的了解</p>
+<blockquote>
+<p>Most system authentication is configured locally, which means that services must check with a local user store to determine users and credentials. What SSSD does is allow a local service to check with a local cache in SSSD, but that cache may be taken from any variety of remote identity providers — an LDAP directory, an Identity Management domain, Active Directory, possibly even a Kerberos realm.</p>
+</blockquote>
+<p>正式因为有了 SSSD， 我们创建租户账号后，可以不用做任何操作，自动 ssh 登陆到机器。</p>
+<h2 id="2-zepplin-多租户支持现状">2 Zepplin 多租户支持现状</h2>
+<p>当前 Zeppelin 官方 feature 上写的是 multi-user，刚开始很容易理解为支持多租户。经过一番研究，代码走读，发现 Zeppelin 支持的确实是多用户，即使支持用户模拟 <code>Interpreter User Impersonation</code>。但是用户实际执行 hive 或者 spark 操作的时候， Kerberos 认证只能通过 keytab 的方式，且一个 interpreter 只能指定一个 keytab。</p>
+<p>我们通过 一段 jdbc interperter 源码来分析</p>
+<pre><code>
+  public static AuthenticationMethod getAuthtype(Properties properties) {
+    AuthenticationMethod authType;
+    try {
+      // 前端获取认证类型
+      authType = AuthenticationMethod.valueOf(properties.getProperty(&quot;zeppelin.jdbc.auth.type&quot;)
+          .trim().toUpperCase());
+    } catch (Exception e) {
+      LOGGER.error(String.format(&quot;Invalid auth.type detected with value %s, defaulting &quot; +
+          &quot;auth.type to SIMPLE&quot;, properties.getProperty(&quot;zeppelin.jdbc.auth.type&quot;)));
+      authType = SIMPLE;
+    }
+    return authType;
+  }
+</code></pre>
+<p>如果是 Kerberos 认证类型，通过配置的 keytab 初始话认证信息。这里就可以看出，keytab 的配置是基于 interpreter 配置的，而不是基于用户动态变化的；<br>
+而实际我们大数据平台 Kerberos 认证是基于用户级，用户通过执行 kinit 命令 ，输入密码完成认证，Zeppelin  当前不支持独立租户认证执行任务。</p>
+<pre><code>public static void createSecureConfiguration(Properties properties) {
+    AuthenticationMethod authType = getAuthtype(properties);
+    switch (authType) {
+        case KERBEROS:
+          Configuration conf = new org.apache.hadoop.conf.Configuration();
+          conf.set(&quot;hadoop.security.authentication&quot;, KERBEROS.toString());
+          UserGroupInformation.setConfiguration(conf);
+          try {
+
+            UserGroupInformation.loginUserFromKeytab(
+                properties.getProperty(&quot;zeppelin.jdbc.principal&quot;),
+                //  interpreter keytab 固化
+                properties.getProperty(&quot;zeppelin.jdbc.keytab.location&quot;)
+            );
+          } catch (IOException e) {
+            LOGGER.error(&quot;Failed to get either keytab location or principal name in the &quot; +
+                &quot;interpreter&quot;, e);
+          }
+    }
+  }
+
+</code></pre>
+<p>为了让 Zeppelin 支持基于租户 kinit 模式的独立认证方式，我们对 Zeppelin 进行了一系列代码，脚本改写，实现多租户。</p>
+<h2 id="3-zeppelin-多租户集成">3 Zeppelin 多租户集成</h2>
+<h3 id="31-基础-zeppelin-环境搭建">3.1 基础 Zeppelin 环境搭建</h3>
+<p>可以参考 Apache 官方文档，不复杂</p>
+<h3 id="32-交互式分析页面-租户登录认证拦截配置">3.2 交互式分析页面 - 租户登录认证拦截配置</h3>
+<p>进入 Zeppelin server 配置目录 conf/shiro.ini 配置 LDAP<br>
+使得 Zeppelin 登录使用 LDAP 里面的用户进行登录校验，参考的配置如下</p>
+<pre><code>
+ldapRealm = org.apache.zeppelin.realm.LdapGroupRealm
+# search base for ldap groups (only relevant for LdapGroupRealm):
+ldapRealm.contextFactory.environment[ldap.searchBase] = dc=COMPANY,dc=COM
+ldapRealm.contextFactory.url = [ldap://ldap.test.com:389](ldap://ldap.test.com:389/)
+ldapRealm.userDnTemplate = uid={0},ou=Users,dc=COMPANY,dc=COM
+ldapRealm.contextFactory.authenticationMechanism = simple
+</code></pre>
+<p>这样我们多租户可以登陆啦，剩下待解决的问题就是，多租户独立认证访问集群服务。</p>
+<h3 id="33-用户名-密码-存储服务">3.3 用户名 / 密码 存储服务</h3>
+<p>为了实现多租户的独立认证，不同模块的无缝登录认证，避免多次密码输入和流程中断；</p>
+<p>笔者改写 Zeppelin Server 端登陆部分的源码，将租户登录后的用户名和密码通过加密存储在本地轻量级数据库，以备后续程序调用。</p>
+<p>当然这里存储方案有两种供选择：</p>
+<ul>
+<li>直接写入 linxu 本地文件：实现起来快，但是有安全隐患</li>
+<li>写入数据库：加密存储，高可靠</li>
+</ul>
+<h3 id="34-租户自动化认证模块-基于-expect-的脚本">3.4 租户自动化认证模块 – 基于 Expect 的脚本</h3>
+<ul>
+<li>新增 <code>kinit.sh</code> 脚本, 传入租户用户名，密码，完成 kinit 操作<br>
+-    修改了 <code>interpreter.sh</code> 新增 expect su 实现租户自动化的免密登录，并调用认证脚本进行 kerberos 认证。<br>
+-    租户认证通过后，启动该租户对应的组件解释器，实现组件服务监听，接受客户端请求。<br>
+kinit 脚本就比较简单</li>
+</ul>
+<pre><code>#!/bin/bash
+# kinit with user and password
+user=$1
+password=$2
+echo &quot;${password}&quot; | kinit $user
+</code></pre>
+<p>expect 脚本代码片段，提供两种方式自动登陆，su 和 ssh，由于 ssh 登陆是临时会话， kerberos 认证生成的票据过期时间短，后面改成 su 的方式。</p>
+<pre><code>auto_su () {
+    expect -c &quot;set timeout -1;
+               spawn su $2 -c \&quot;${@:3}\&quot;;
+               expect {
+                    *assword:* {
+                                send $1\r;
+                                }
+                    eof
+               }
+               &quot;
+}
+
+auto_smart_ssh () {
+    expect -c &quot;set timeout -1;
+                spawn ssh -o StrictHostKeyChecking=no $2 ${@:3};
+                expect {
+                    *assword:* {send -- $1\r;
+                                 expect {
+                                    *denied* {exit 2;}
+                                    eof
+                                 }
+                    }
+                    eof         {exit 1;}
+                &quot;
+    return $?
+}
+</code></pre>
+<p>总体流程如如下图所示：<br>
+<img src="https://yaofun.top/post-images/1653913107702.png" alt="" loading="lazy"></p>
+<h2 id="4-总结">4 总结</h2>
+<p>总结下这种方案的优点：</p>
+<ol>
+<li>在已有多租户大数据平台下，基于开源工具快速开发，只需修改少量 Zeppelin 源码，实现多租户交互式查询系统，实现多租户据隔离，保证集群数据安全性。</li>
+<li>基于Zeppelin + LDAP + Kerberos + Expect 脚本 + 用户密码存储服务模式， 实现前端查询平台与大数据系统平台，无缝衔接，完成统一用户登录认证，平台服务认证授权。</li>
+<li>通过shell expect 脚本结合本地加解密存储服务，实现租户无密码，单点登录，统一认证访问 Hadoop Hive Spark HBase 等大数据组件，实现交互式查询分析服务。</li>
+</ol>
+]]></content>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[HBase - Scan 中 setCaching setMaxResultSize setBatch 解惑]]></title>
+        <id>https://yaofun.top/post/hbase-scan-zhong-setcaching-setmaxresultsize-setbatch-jie-huo/</id>
+        <link href="https://yaofun.top/post/hbase-scan-zhong-setcaching-setmaxresultsize-setbatch-jie-huo/">
+        </link>
+        <updated>2017-09-19T12:55:12.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="0-蜜汁参数">0. 蜜汁参数</h1>
+<p>在做 HBase 客户端 scan 优化时，经常会碰到以下几个参数，总是让人迷惑 ，不知从何优化起。</p>
+<ul>
+<li><code>.setCache</code> （缓存大小? 字节数？行数？）</li>
+<li><code>.setMaxResultSize</code> （最大结果数？）</li>
+<li><code>.setBatch</code> （批量？）</li>
+</ul>
+<p>造成这种困扰很大的原因是命名问题。<br>
+先说下结论，如果把名字改成如下，语义会清晰很多 。[1]</p>
+<ul>
+<li><code>.setCaching</code>  =&gt; <strong><code>.setNumberOfRowsFetchSize</code></strong>  (客户端每次 rpc fetch 的行数)</li>
+<li><code>.setMaxResultSize</code> =&gt; <strong><code>.setMaxResultByteSize</code></strong>  （客户端缓存的最大字节数）</li>
+<li><code>.setBatch</code>  =&gt; <strong><code>.setColumnsChunkSize</code></strong> （客户端每次获取的列数）</li>
+</ul>
+<h1 id="1-client-scan-原理及相关源码解读">1. Client Scan 原理及相关源码解读</h1>
+<p>HBase 每次 scan 的数据量可能会比较大，客户端不会一次性全部把数据从服务端拉回来。而是通过多次 rpc 分批次的拉取。类似于 TCP 协议里面一段一段的传输，可以做到细粒度的流量控制。至于如何调优，控制每次 rpc 拉取的数据量，就可以通过以上三个比较蛋疼的参数来控制。</p>
+<p>我们可以先看一段来自 HBase scan 里面的核心类 <a href="https://github.com/apache/hbase/blob/branch-1.2/hbase-client/src/main/java/org/apache/hadoop/hbase/client/ClientScanner.java#L364">ClientScanner</a> 里的读取逻辑，通过它来了解整个流程。</p>
+<pre><code>@Override
+public Result next() throws IOException {
+  // If the scanner is closed and there's nothing left in the cache, next is a no-op.
+  if (cache.size() == 0 &amp;&amp; this.closed) {
+    return null;
+  }
+
+  // 缓冲中没有就 RPC 调用读取数据进缓存
+  if (cache.size() == 0) {   
+        loadCache();
+  }
+ 
+  // 缓冲中有直接从缓存中取
+  if (cache.size() &gt; 0) {
+    return cache.poll();
+  }
+ 
+  // if we exhausted this scanner before calling close, write out the scan metrics
+  writeScanMetrics();
+  return null;
+}
+</code></pre>
+<p>每次从缓存 cache 中读，缓存为空则 loadCache , 实际上 cache 是通过一个链表来实现的，定义如下:<br>
+<code>protected final LinkedList&lt;Result&gt; cache = new LinkedList&lt;Result&gt;();</code></p>
+<p>继续看 loadCache() ，为了弄清大体主流程，我删除了部分代码</p>
+<pre><code> protected void loadCache() throws IOException {
+    Result[] values = null;
+    // 剩余最大容量
+    long remainingResultSize = maxScannerResultSize;
+    // 行数计数 为 setCaching 的值
+    int countdown = this.caching;
+    // 配置 rpc 请求的条数
+    callable.setCaching(this.caching);
+    boolean serverHasMoreResults = false;
+
+    // do while 循环，循环次数即为 rpc 次数
+    do {
+      try {
+        // rpc 从 server 拉数据，请求的条数为 this.caching 默认为 Integer.Max_VALUE
+        values = call(callable, caller, scannerTimeout);
+         } catch (DoNotRetryIOException | NeedUnmanagedConnectionException e) {
+             // 异常处理 这里略过
+       }
+      // Groom the array of Results that we received back from the server before adding that
+      // Results to the scanner's cache
+      // 将数据放入缓存前，先对数据进行一些处理，主要是处理对于部分对调用这不可见的数据
+      List&lt;Result&gt; resultsToAddToCache =
+          getResultsToAddToCache(values, callable.isHeartbeatMessage());
+      if (!resultsToAddToCache.isEmpty()) {
+        // 遍历 results 写入 cache
+        for (Result rs : resultsToAddToCache) {
+          cache.add(rs);
+          // We don't make Iterator here
+          for (Cell cell : rs.rawCells()) {
+            // 估算每个 cell 的大小，计算剩余 byte size 
+            remainingResultSize -= CellUtil.estimatedHeapSizeOf(cell);
+          }
+          // 剩余行数 --
+          countdown--;
+          this.lastResult = rs;
+        }
+      }
+
+      // We expect that the server won't have more results for us when we exhaust
+      // the size (bytes or count) of the results returned. If the server *does* inform us that
+      // there are more results, we want to avoid possiblyNextScanner(...). Only when we actually
+      // get results is the moreResults context valid.
+      if (null != values &amp;&amp; values.length &gt; 0 &amp;&amp; callable.hasMoreResultsContext()) {
+        serverHasMoreResults = callable.getServerHasMoreResults() &amp; partialResults.isEmpty();
+      }
+      // Values == null means server-side filter has determined we must STOP
+    } while (doneWithRegion(remainingResultSize, countdown, serverHasMoreResults)
+        &amp;&amp; (!partialResults.isEmpty() || possiblyNextScanner(countdown, values == null)));
+     // 循环条件
+  }
+</code></pre>
+<p>这里重点看下do while 循环的条件 doneWithRegion()</p>
+<pre><code>  /**
+   * @param remainingResultSize
+   * @param remainingRows
+   * @param regionHasMoreResults
+  */
+  private boolean doneWithRegion(long remainingResultSize, int remainingRows,
+      boolean regionHasMoreResults) {
+    // 同时满足这些才行这里的
+    // remainingResultSize 初始值即为配置的 setMaxResultSize 
+   //  remainingRows 初始值为配置的 setCaching （实际为：行数）
+    return remainingResultSize &gt; 0 &amp;&amp; remainingRows &gt; 0 &amp;&amp; !regionHasMoreResults;
+  }
+</code></pre>
+<p>因为每次 while 循环会进行一次 rpc 调用，不同的参数配置组合配置导致 rpc 调用的次数不同。必须同时满足行数与字节数的的限制才行。</p>
+<h1 id="3-官方配置与建议">3. 官方配置与建议</h1>
+<p>这几个参数对应的配置如下</p>
+<ul>
+<li>
+<p><code>hbase.client.scanner.caching - (setCaching)</code>：HBase-0.98 默认值为为 100，HBase-1.2 默认值为 2147483647，即 Integer.MAX_VALUE。Scan.next() 的一次 RPC 请求 fetch 的记录条数。<strong>配置建议：这个参数与 下面的<code>hbase.client.scanner.max.result.size - (setMaxResultSize) </code> 配置使用，在网络状况良好的情况下，自定义设置不宜太小， 可以直接采用默认值，不配置。</strong></p>
+</li>
+<li>
+<p><code>hbase.client.scanner.max.result.size - (setMaxResultSize)</code>：HBase-0.98 无该项配置，HBase-1.2 默认值为 2<em>1024</em>1024，即 2M。Scan.next() 的一次 RPC 请求 fetch 的数据量大小，目前 HBase-1.2 在 Caching 为默认值(Integer Max)的时候，实际使用这个参数控制 RPC 次数和流量。<strong>配置建议：如果网络状况较好（万兆网卡），scan 的数据量非常大，可以将这个值配置高一点。如果配置过高：则可能 loadCache 速度比较慢，导致 scan timeout 异常</strong></p>
+</li>
+<li>
+<p><code>hbase.server.scanner.max.result.size</code>：服务端配置。HBase-0.98 无该项配置，HBase-1.2 新增，默认值为 100<em>1024</em>1024，即 100M。该参数表示当 Scan.next() 发起 RPC 后，服务端返回给客户端的最大字节数，防止 Server OOM。[2]</p>
+</li>
+<li>
+<p><code>setBatch()</code>  坑爹的命名，这个实际上是配置获取的列数，假如表有两个列簇 cf，info，每个列簇5个列。这样每行可能有10列了，setBatch() 可以控制每次获取的最大列数，进一步从列级别控制流量。<strong>配置建议：当列数很多，数据量大时考虑配置此参数，例如100列每次只获取50列。一般情况可以默认值（-1 不受限）。</strong></p>
+</li>
+</ul>
+<p>参考：<br>
+[1] <a href="http://danboykis.com/?p=2230">HBase client’s weird API names</a><br>
+[2] <a href="http://www.cnblogs.com/zhongxun/articles/6485919.html">HBase Client配置参数说明</a></p>
+]]></content>
+    </entry>
+</feed>

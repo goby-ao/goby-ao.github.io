@@ -1,0 +1,389 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Apache Zeppelin 0.7 to 0.9 版本升级 - 源码编译 | Yao&#39;s Blog</title>
+<link rel="shortcut icon" href="https://yaofun.top/favicon.ico?v=1653915643763">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://yaofun.top/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Apache Zeppelin 0.7 to 0.9 版本升级 - 源码编译 | Yao&#39;s Blog - Atom Feed" href="https://yaofun.top/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NFP4JGDBYW"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NFP4JGDBYW');
+</script>
+
+
+    <meta name="description" content="maven 编译打包
+首先可以参考官方文档：
+https://zeppelin.apache.org/docs/latest/setup/basics/how_to_build.html#run-end-to-end-tests
+最开始，如..." />
+    <meta name="keywords" content="Zeppelin" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://yaofun.top">
+  <img class="avatar" src="https://yaofun.top/images/avatar.png?v=1653915643763" alt="">
+  </a>
+  <h1 class="site-title">
+    Yao&#39;s Blog
+  </h1>
+  <p class="site-description">
+    「晚来天欲雪，能饮一杯无」
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/goby-ao" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://twitter.com/Sunflowers724" target="_blank">
+          <i class="ri-twitter-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://weibo.com/yaoyao724" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Apache Zeppelin 0.7 to 0.9 版本升级 - 源码编译
+            </h2>
+            <div class="post-info">
+              <span>
+                2021-09-27
+              </span>
+              <span>
+                7 min read
+              </span>
+              
+                <a href="https://yaofun.top/tag/E-HMRHMzQ/" class="post-tag">
+                  # Zeppelin
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <h2 id="maven-编译打包">maven 编译打包</h2>
+<p>首先可以参考官方文档：<br>
+https://zeppelin.apache.org/docs/latest/setup/basics/how_to_build.html#run-end-to-end-tests</p>
+<p>最开始，如果是打一个完整的包含所有模块的可运行的 tar 包，用 maven 命令：<br>
+<code>mvn clean package -Pbuild-distr -DskipTests</code><br>
+之后，如果只需要单独对某个模块编译可以使用命令：<br>
+<code>mvn clean package -DskipTests -pl zeppelin-server</code><br>
+由于 Zeppelin 项目模块众多，整个编译打包过程较为耗时，中途也出现了不少问题：</p>
+<p>附 maven 构建参数列表如下：</p>
+<pre><code>C:\dev\apache-maven-3.5.0\bin&gt; .\mvn --help
+
+usage: mvn [options] [&lt;goal(s)&gt;] [&lt;phase(s)&gt;]
+
+Options:
+ -am,--also-make                        If project list is specified, also
+                                        build projects required by the
+                                        list
+ -amd,--also-make-dependents            If project list is specified, also
+                                        build projects that depend on
+                                        projects on the list
+ -B,--batch-mode                        Run in non-interactive (batch)
+                                        mode (disables output color)
+ -b,--builder &lt;arg&gt;                     The id of the build strategy to
+                                        use
+ -C,--strict-checksums                  Fail the build if checksums don't
+                                        match
+ -c,--lax-checksums                     Warn if checksums don't match
+ -cpu,--check-plugin-updates            Ineffective, only kept for
+                                        backward compatibility
+ -D,--define &lt;arg&gt;                      Define a system property
+ -e,--errors                            Produce execution error messages
+ -emp,--encrypt-master-password &lt;arg&gt;   Encrypt master security password
+ -ep,--encrypt-password &lt;arg&gt;           Encrypt server password
+ -f,--file &lt;arg&gt;                        Force the use of an alternate POM
+                                        file (or directory with pom.xml)
+ -fae,--fail-at-end                     Only fail the build afterwards;
+                                        allow all non-impacted builds to
+                                        continue
+ -ff,--fail-fast                        Stop at first failure in
+                                        reactorized builds
+ -fn,--fail-never                       NEVER fail the build, regardless
+                                        of project result
+ -gs,--global-settings &lt;arg&gt;            Alternate path for the global
+                                        settings file
+ -gt,--global-toolchains &lt;arg&gt;          Alternate path for the global
+                                        toolchains file
+ -h,--help                              Display help information
+ -l,--log-file &lt;arg&gt;                    Log file where all build output
+                                        will go (disables output color)
+ -llr,--legacy-local-repository         Use Maven 2 Legacy Local
+                                        Repository behaviour, ie no use of
+                                        _remote.repositories. Can also be
+                                        activated by using
+                                        -Dmaven.legacyLocalRepo=true
+ -N,--non-recursive                     Do not recurse into sub-projects
+ -npr,--no-plugin-registry              Ineffective, only kept for
+                                        backward compatibility
+ -npu,--no-plugin-updates               Ineffective, only kept for
+                                        backward compatibility
+ -nsu,--no-snapshot-updates             Suppress SNAPSHOT updates
+ -o,--offline                           Work offline
+ -P,--activate-profiles &lt;arg&gt;           Comma-delimited list of profiles
+                                        to activate
+ -pl,--projects &lt;arg&gt;                   Comma-delimited list of specified
+                                        reactor projects to build instead
+                                        of all projects. A project can be
+                                        specified by [groupId]:artifactId
+                                        or by its relative path
+ -q,--quiet                             Quiet output - only show errors
+ -rf,--resume-from &lt;arg&gt;                Resume reactor from specified
+                                        project
+ -s,--settings &lt;arg&gt;                    Alternate path for the user
+                                        settings file
+ -t,--toolchains &lt;arg&gt;                  Alternate path for the user
+                                        toolchains file
+ -T,--threads &lt;arg&gt;                     Thread count, for instance 2.0C
+                                        where C is core multiplied
+ -U,--update-snapshots                  Forces a check for missing
+                                        releases and updated snapshots on
+                                        remote repositories
+ -up,--update-plugins                   Ineffective, only kept for
+                                        backward compatibility
+ -v,--version                           Display version information
+ -V,--show-version                      Display version information
+                                        WITHOUT stopping build
+ -X,--debug                             Produce execution debug output
+</code></pre>
+<h2 id="1部分依赖源下载慢的问题">1.部分依赖源下载慢的问题</h2>
+<p>spark flink 的包比较大，几百兆，可以将官方 apache 地址清华的源：</p>
+<ol>
+<li>rlang/pom.xml</li>
+</ol>
+<ul>
+<li>标签 spark.src.download.url 替换<br>
+https://mirrors.tuna.tsinghua.edu.cn/apache/spark/<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mrow><mi>s</mi><mi>p</mi><mi>a</mi><mi>r</mi><mi>k</mi><mi mathvariant="normal">.</mi><mi>a</mi><mi>r</mi><mi>c</mi><mi>h</mi><mi>i</mi><mi>v</mi><mi>e</mi></mrow><mi mathvariant="normal">/</mi></mrow><annotation encoding="application/x-tex">{spark.archive}/</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathdefault">s</span><span class="mord mathdefault">p</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord">.</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">c</span><span class="mord mathdefault">h</span><span class="mord mathdefault">i</span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span><span class="mord mathdefault">e</span></span><span class="mord">/</span></span></span></span>{spark.archive}.tgz</li>
+<li>spark.bin.download.url 替换<br>
+https://mirrors.tuna.tsinghua.edu.cn/apache/spark/<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mrow><mi>s</mi><mi>p</mi><mi>a</mi><mi>r</mi><mi>k</mi><mi mathvariant="normal">.</mi><mi>a</mi><mi>r</mi><mi>c</mi><mi>h</mi><mi>i</mi><mi>v</mi><mi>e</mi></mrow><mi mathvariant="normal">/</mi></mrow><annotation encoding="application/x-tex">{spark.archive}/</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathdefault">s</span><span class="mord mathdefault">p</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord">.</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">c</span><span class="mord mathdefault">h</span><span class="mord mathdefault">i</span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span><span class="mord mathdefault">e</span></span><span class="mord">/</span></span></span></span>{spark.archive}-bin-without-hadoop.tgz</li>
+</ul>
+<ol start="2">
+<li>spark/pom.xml</li>
+</ol>
+<ul>
+<li>替换 spark.src.download.ur<br>
+https://mirrors.tuna.tsinghua.edu.cn/apache/spark/<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mrow><mi>s</mi><mi>p</mi><mi>a</mi><mi>r</mi><mi>k</mi><mi mathvariant="normal">.</mi><mi>a</mi><mi>r</mi><mi>c</mi><mi>h</mi><mi>i</mi><mi>v</mi><mi>e</mi></mrow><mi mathvariant="normal">/</mi></mrow><annotation encoding="application/x-tex">{spark.archive}/</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathdefault">s</span><span class="mord mathdefault">p</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord">.</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">c</span><span class="mord mathdefault">h</span><span class="mord mathdefault">i</span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span><span class="mord mathdefault">e</span></span><span class="mord">/</span></span></span></span>{spark.archive}.tgz</li>
+<li>替换 spark.bin.download.url<br>
+https://mirrors.tuna.tsinghua.edu.cn/apache/spark/<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mrow><mi>s</mi><mi>p</mi><mi>a</mi><mi>r</mi><mi>k</mi><mi mathvariant="normal">.</mi><mi>a</mi><mi>r</mi><mi>c</mi><mi>h</mi><mi>i</mi><mi>v</mi><mi>e</mi></mrow><mi mathvariant="normal">/</mi></mrow><annotation encoding="application/x-tex">{spark.archive}/</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathdefault">s</span><span class="mord mathdefault">p</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord">.</span><span class="mord mathdefault">a</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">c</span><span class="mord mathdefault">h</span><span class="mord mathdefault">i</span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span><span class="mord mathdefault">e</span></span><span class="mord">/</span></span></span></span>{spark.archive}-bin-without-hadoop.tgz</li>
+</ul>
+<ol start="3">
+<li>flink/pom.xml</li>
+</ol>
+<ul>
+<li>flink.bin.download.url<br>
+https://mirrors.tuna.tsinghua.edu.cn/apache/flink/flink-<span class="katex"><span class="katex-mathml"><math><semantics><mrow><mrow><mi>f</mi><mi>l</mi><mi>i</mi><mi>n</mi><mi>k</mi><mi mathvariant="normal">.</mi><mi>v</mi><mi>e</mi><mi>r</mi><mi>s</mi><mi>i</mi><mi>o</mi><mi>n</mi></mrow><mi mathvariant="normal">/</mi><mi>f</mi><mi>l</mi><mi>i</mi><mi>n</mi><mi>k</mi><mo>−</mo></mrow><annotation encoding="application/x-tex">{flink.version}/flink-</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">i</span><span class="mord mathdefault">n</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord">.</span><span class="mord mathdefault" style="margin-right:0.03588em;">v</span><span class="mord mathdefault">e</span><span class="mord mathdefault" style="margin-right:0.02778em;">r</span><span class="mord mathdefault">s</span><span class="mord mathdefault">i</span><span class="mord mathdefault">o</span><span class="mord mathdefault">n</span></span><span class="mord">/</span><span class="mord mathdefault" style="margin-right:0.10764em;">f</span><span class="mord mathdefault" style="margin-right:0.01968em;">l</span><span class="mord mathdefault">i</span><span class="mord mathdefault">n</span><span class="mord mathdefault" style="margin-right:0.03148em;">k</span><span class="mord">−</span></span></span></span>{flink.version}-bin-scala_${scala.binary.version}.tgz</li>
+</ul>
+<p>当然如果有必要也可以使用科学上网，配置git npm IDEA 等组件的代理，配置方式具体参考官网文档，例如 git ：</p>
+<blockquote>
+<p>git config --global http.proxy http://localhost:1080<br>
+git config --global https.proxy http://localhost:1080<br>
+git config --global url.&quot;http://&quot;.insteadOf git://</p>
+</blockquote>
+<p>npm 代理配置：</p>
+<blockquote>
+<p>npm config set proxy http://localhost:1080<br>
+npm config set https-proxy http://localhost:1080<br>
+npm config set registry &quot;http://registry.npmjs.org/&quot;<br>
+npm config set strict-ssl false</p>
+</blockquote>
+<h2 id="2-maven-git-commit-id-plugin-这步很慢">2. maven git-commit-id-plugin 这步很慢</h2>
+<p>将以下参数改为 true：<br>
+&lt;plugin.gitcommitid.useNativeGit&gt;true&lt;/plugin.gitcommitid.useNativeGit&gt;<br>
+Zeppeline 默认值 false, 改为 true 使用系统的 git，而不是内置的 jGit，具体还不清楚 jGit 慢的原因，修改之后就不会在这一步卡了，实在不行也可以把这个 git-commit-id-plugin plugin 注释掉。</p>
+<p>这个是 maven git 插件，可以将包的 git 信息打到指定目录</p>
+<pre><code class="language-xml">&lt;plugin&gt;
+        &lt;groupId&gt;pl.project13.maven&lt;/groupId&gt;
+        &lt;artifactId&gt;git-commit-id-plugin&lt;/artifactId&gt;
+        &lt;version&gt;${plugin.git.commit.id.version}&lt;/version&gt;
+        &lt;executions&gt;
+          &lt;execution&gt;
+            &lt;goals&gt;
+              &lt;goal&gt;revision&lt;/goal&gt;
+            &lt;/goals&gt;
+          &lt;/execution&gt;
+        &lt;/executions&gt;
+        &lt;configuration&gt;
+          &lt;skipPoms&gt;false&lt;/skipPoms&gt;
+          &lt;dotGitDirectory&gt;${project.basedir}/.git&lt;/dotGitDirectory&gt;
+          &lt;useNativeGit&gt;${plugin.gitcommitid.useNativeGit}&lt;/useNativeGit&gt;
+          &lt;generateGitPropertiesFile&gt;true&lt;/generateGitPropertiesFile&gt;
+          &lt;generateGitPropertiesFilename&gt;${project.build.outputDirectory}/git.properties&lt;/generateGitPropertiesFilename&gt;
+          &lt;failOnNoGitDirectory&gt;false&lt;/failOnNoGitDirectory&gt;
+          &lt;dateFormat&gt;yyyy-MM-dd HH:mm:ss&lt;/dateFormat&gt;
+        &lt;/configuration&gt;
+&lt;/plugin&gt;
+</code></pre>
+<h2 id="3-zeppelin-web-编译">3. zeppelin-web 编译</h2>
+<p>建议参考官方文档：https://github.com/apache/zeppelin/tree/master/zeppelin-web</p>
+<p>Zeppelin 前端编译耗时也很长，编译中途出现了不少报错，例如：</p>
+<p>报错 1：error Expected linebreaks to be 'LF' but found 'CRLF' linebreak-style<br>
+修复：在 .eslintrc 文件 rules 里面 配置 &quot;linebreak-style&quot;: [0 ,&quot;error&quot;, &quot;windows&quot;],</p>
+<p>报错 2：error Expected indentation of 10 spaces but found 8 indent<br>
+修复：修改 .eslintrc.js 文件 rules 字段下增加 &quot;indent&quot;: [&quot;off&quot;, 20]</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#maven-%E7%BC%96%E8%AF%91%E6%89%93%E5%8C%85">maven 编译打包</a></li>
+<li><a href="#1%E9%83%A8%E5%88%86%E4%BE%9D%E8%B5%96%E6%BA%90%E4%B8%8B%E8%BD%BD%E6%85%A2%E7%9A%84%E9%97%AE%E9%A2%98">1.部分依赖源下载慢的问题</a></li>
+<li><a href="#2-maven-git-commit-id-plugin-%E8%BF%99%E6%AD%A5%E5%BE%88%E6%85%A2">2. maven git-commit-id-plugin 这步很慢</a></li>
+<li><a href="#3-zeppelin-web-%E7%BC%96%E8%AF%91">3. zeppelin-web 编译</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://yaofun.top/post/Apache Zeppelin 0.7 to 0.9 版本升级 - 问题记录/">
+              <h3 class="post-title">
+                Apache Zeppelin 0.7 to 0.9 版本升级 - 问题记录
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+            <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+<div id="gitalk-container"></div>
+
+<script>
+
+  var gitalk = new Gitalk({
+    clientID: '61bda7106769d83cf29f',
+    clientSecret: '74f87c9c12044efbd81a2e6c24f1a3718e31be47',
+    repo: 'goby-ao.github.io',
+    owner: 'goby-ao',
+    admin: ['goby-ao'],
+    id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+    distractionFreeMode: false  // Facebook-like distraction free mode
+  })
+
+  gitalk.render('gitalk-container')
+
+</script>
+
+          
+
+          
+        
+
+        <div class="site-footer">
+  Powered by &nbsp; <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> &nbsp;/ Hosted on GitHub Page
+  <a class="rss" href="https://yaofun.top/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

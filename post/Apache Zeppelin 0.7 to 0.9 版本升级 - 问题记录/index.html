@@ -1,0 +1,430 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Apache Zeppelin 0.7 to 0.9 版本升级 - 问题记录 | Yao&#39;s Blog</title>
+<link rel="shortcut icon" href="https://yaofun.top/favicon.ico?v=1653915643763">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://yaofun.top/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Apache Zeppelin 0.7 to 0.9 版本升级 - 问题记录 | Yao&#39;s Blog - Atom Feed" href="https://yaofun.top/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NFP4JGDBYW"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NFP4JGDBYW');
+</script>
+
+
+    <meta name="description" content="0. 旧版本问题
+当前公司内部的 Zeppelin 0.7.2 的版本用了有 3 年多，累计了一些无法问题，亟待解决：
+
+不支持 spark 2.2 以上的版本，spark 2.2 存在执行结束不释放 yarn 资源的严重 bug
+不支持 ..." />
+    <meta name="keywords" content="Zeppelin" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://yaofun.top">
+  <img class="avatar" src="https://yaofun.top/images/avatar.png?v=1653915643763" alt="">
+  </a>
+  <h1 class="site-title">
+    Yao&#39;s Blog
+  </h1>
+  <p class="site-description">
+    「晚来天欲雪，能饮一杯无」
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/goby-ao" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://twitter.com/Sunflowers724" target="_blank">
+          <i class="ri-twitter-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://weibo.com/yaoyao724" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Apache Zeppelin 0.7 to 0.9 版本升级 - 问题记录
+            </h2>
+            <div class="post-info">
+              <span>
+                2021-09-26
+              </span>
+              <span>
+                8 min read
+              </span>
+              
+                <a href="https://yaofun.top/tag/E-HMRHMzQ/" class="post-tag">
+                  # Zeppelin
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <h2 id="0-旧版本问题">0. 旧版本问题</h2>
+<p>当前公司内部的 Zeppelin 0.7.2 的版本用了有 3 年多，累计了一些无法问题，亟待解决：</p>
+<ol>
+<li>不支持 spark 2.2 以上的版本，spark 2.2 存在执行结束不释放 yarn 资源的严重 bug</li>
+<li>不支持 yarn cluster 模式，导致所有 driver 都在 server 节点，可能出现资源瓶颈 [<a href="https://issues.apache.org/jira/browse/ZEPPELIN-2898">ZEPPELIN-2898</a>]</li>
+<li>笔记本（notebook）多了之后（5000+），Server 启动速度很慢，长达数分钟，笔记本加载也偶现卡顿问题</li>
+<li>Server 存在单点故障问题，不支持高可用</li>
+<li>当前代码编辑自动补全不够友好，不支持 TAB 补全 [<a href="https://issues.apache.org/jira/browse/ZEPPELIN-277">ZEPPELIN-277</a>]</li>
+<li>前端容易卡住</li>
+<li>每次更新 interpreter ，整个 interpreter 都需要重启，在多租户场景下不够友好，直观感受就是用一段时间查询就很慢（时间耗在了第一次启动 interperter 上面）。 [<a href="https://issues.apache.org/jira/browse/ZEPPELIN-1770">ZEPPELIN-1770</a>]</li>
+</ol>
+<p>通过一番调研，以上大部分问题在 0.9 版本得以解决，除此之外 0.9 还支持了很多新的特性，例如：</p>
+<ol>
+<li>shell 解释器 支持 terminal 交互式模式，也就是 web terminal ，用户体验大大提升</li>
+<li>新增多种解释器包括：Groovy Interpreter [<a href="https://issues.apache.org/jira/browse/ZEPPELIN-2176">ZEPPELIN-2176</a>]</li>
+<li>notebook 重构，性能优化，存储支持 MongoDB 等存储引擎</li>
+</ol>
+<p>下载源码，编译打包（参考之前的文章），部署之后遇到了很多问题，记录如下：</p>
+<h2 id="1-开启-kerberos-找不到-tgt-问题">1. 开启 kerberos 找不到 tgt 问题</h2>
+<p>对于开启 kerberos 的环境，启动 interperter 前，已经 kinit 认证过了，再提交任务，还是报错找不到 tgt，这种方式再 0.7.2 版本都是可行的，目前不清楚升级之后找不到的原因。由于之前遇到过类似的问题，这里通过配置的方式解决：zeppeiln-env.sh 增加以下 Java 参数配置，支持从本地缓存获取 kerberos ticket :<br>
+<code>-Djavax.security.auth.useSubjectCredsOnly=false</code><br>
+这个参数的解释<a href="https://docs.oracle.com/javase/7/docs/technotes/guides/security/jgss/tutorials/BasicClientServer.html#useSub">官网文档</a></p>
+<h2 id="2-新版本-hive-jdbc-proxyuser-配置的变化">2. 新版本 hive jdbc proxyuser 配置的变化</h2>
+<p>对于非开启 kerberos 的环境， hive jdbc interperter 需要配置代理用户，旧版本的配置方式已经不适用了，新版本的配置，可以参考官网文档，配置  hive.server2.proxy.user</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">Name</th>
+<th style="text-align:center">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">default.driver</td>
+<td style="text-align:center">org.apache.hive.jdbc.HiveDriver</td>
+</tr>
+<tr>
+<td style="text-align:center">default.url</td>
+<td style="text-align:center">jdbc:hive2://localhost:10000</td>
+</tr>
+<tr>
+<td style="text-align:center">default.user</td>
+<td style="text-align:center">hive_user</td>
+</tr>
+<tr>
+<td style="text-align:center">default.password</td>
+<td style="text-align:center">hive_password</td>
+</tr>
+<tr>
+<td style="text-align:center">default.proxy.user.property</td>
+<td style="text-align:center">hive.server2.proxy.user</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3-notebook-迁移">3. notebook 迁移</h2>
+<h3 id="31-旧数据迁移过程">3.1 旧数据迁移过程</h3>
+<p>新版 Zeppelin 提供了 notebook 的迁移脚本 (bin 目录下的 upgrade-note.sh 脚本)，迁移主要依赖于此脚本，另外此次也将本地存储换成了 mongoDB：</p>
+<ol>
+<li>拷贝 conf 下的和 notebook 下的所有笔记到新版本的对应目录</li>
+<li>通过脚本清理 2019 年以前以及超大存储的 note</li>
+<li>执行升级 note 命令 bin/upgrade-note.sh -d （由于0.9版本对 note 结构和命令有修改）</li>
+<li>删除异常的 note 文件类型，不然会导致 notebook server 运行时异常，rm notebook/_*</li>
+<li>通过 python 脚本更新  notebook-authorization.json （0.8 版本对权限做了变更，新增了 runner 角色）</li>
+<li>停止 zeppelin-server，修改 conf/zeppelin-env.sh , 配置存储为 mongodb</li>
+<li>MongoDB 中新增库 ：use xxdb</li>
+<li>重启 zeppelin server 后 会自动交本地的 notebook 迁移至 MongoDB</li>
+</ol>
+<h3 id="32-升级-notebook-权限问题">3.2 升级 notebook 权限问题</h3>
+<p>Zeppelin 0.8.x 版本笔记本的权限模块做了一些重构，新增了 runner 角色，导致新版本迁移过去不兼容，参考官网 <a href="https://issues.apache.org/jira/browse/ZEPPELIN-3646?jql=project%20%3D%20ZEPPELIN%20AND%20text%20~%20upgrade">issue</a> 的解决方案</p>
+<p>所以 conf/notebook-authorization.json 里面需要新增 runners，不然无法识别权限。</p>
+<p>通过一段 python 脚本可以更新解决</p>
+<pre><code class="language-python">import json
+
+note_auth_json_file = 'PATH_TO_ZEPPELIN/conf/notebook-authorization.json'
+
+f = open(note_auth_json_file, 'r')
+note_auth_json = json.loads(f.read())
+f.close()
+
+for note_id in note_auth_json['authInfo']:
+    print(note_id)
+    if 'writers' in note_auth_json['authInfo'][note_id] \
+        and 'runners' not in note_auth_json['authInfo'][note_id]:
+        note_auth_json['authInfo'][note_id]['runners'] = note_auth_json['authInfo'][note_id]['writers']
+        print(note_auth_json['authInfo'][note_id]['runners'])
+
+f = open(note_auth_json_file, 'w')
+f.write(json.dumps(note_auth_json))
+f.close()
+</code></pre>
+<h3 id="33-note-默认绑定解释器丢失问题">3.3 note 默认绑定解释器丢失问题</h3>
+<p>每个 notebook 都有默认的 interperter ，例如创建一个 spark 类型的笔记本后，默认解释器就是 spark，写代码无需在第一行通过 %spark 的方式手动指定。迁移新版后后用户默认的绑定器解释器丢失，全部都变成了 spark，导致非 spark 类的 note 不能按照预期正常运行。</p>
+<p>找到了官方 <a href="https://issues.apache.org/jira/browse/ZEPPELIN-5309">issue</a> , 但是没人解决，这里我写了个 python 脚本修复这个问题，也提交给了 apache。</p>
+<p>首先获取老版本的映射关系，遍历所有笔记更新 json 文件，然后将默认的解释器绑定写到新的 note json 里面。</p>
+<pre><code class="language-python"># -*- coding: utf-8 -*-
+import json
+import os
+import subprocess
+
+old_interpreter_file = './interpreter.json'
+
+f = open(old_interpreter_file, 'r')
+int_json = json.loads(f.read())
+f.close()
+
+dict = {}
+for interpreter_id in int_json['interpreterSettings']:
+    dict[interpreter_id] = int_json['interpreterSettings'][interpreter_id]['name']
+
+for note_id in int_json['interpreterBindings']:
+    path = &quot;./notebook/*_&quot; + note_id + &quot;.zpln&quot;
+
+    process = subprocess.Popen(&quot;find ./notebook -type f -name \&quot;*&quot; + note_id +&quot;.zpln\&quot;&quot;, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    exit_code = process.wait()
+    file=stdout.decode(&quot;utf-8&quot;).strip()
+
+    if file:
+      print(&quot;find file: &quot; + file)
+      print(&quot;note_id:&quot; + note_id + &quot; default binding interpreter is: &quot; + dict[int_json['interpreterBindings'][note_id][0]])
+      nf = open(file, 'r')
+
+      note_json = json.loads(nf.read())
+      note_json[&quot;defaultInterpreterGroup&quot;] = dict[int_json['interpreterBindings'][note_id][0]]
+      nf.close()
+          
+      f = open(file, 'w')
+      f.write(json.dumps(note_json,indent=4))
+      f.close()
+</code></pre>
+<h2 id="4-shiro-新增配置导致自动登录失败问题">4. shiro 新增配置导致自动登录失败问题</h2>
+<p>目前 shiro 配置是除了 api/version 之外的所有的请求都要走认证</p>
+<pre><code>/api/version = anon
+/** = authc
+</code></pre>
+<p>而 /api/cluster/address 是新版本新增的一个接口，这个请求比自动登录要早，走认证会自动跳转到 /api/login 这个导致自动登录失败</p>
+<p>shiro.ini 新增以下配置解决</p>
+<p><code>/api/cluster/address = anon</code></p>
+<h2 id="5-查询结果无法选中复制">5 查询结果无法选中复制</h2>
+<p>Zeppelin 升级前端框架导致，从普通的 table 表单升级到 ui-grid 。查询结果不方便复制，即使复制也不带格式。</p>
+<p>新增全选复制到剪切板功能，限制函数 500 行。</p>
+<p>修改 visualization-table.js 修改如下：</p>
+<pre><code>   gridOptions.enableRowSelection = true;
+   gridOptions.enableSelectAll = true;
+</code></pre>
+<pre><code class="language-javascript">// add copy to clipboard by yao
+gridApi.selection.on.rowSelectionChanged(scope, function(row) {
+  console.log(row);
+  Object.keys(row.entity).forEach((key) =&gt; {
+    if (key === '$$hashKey') {
+      delete row.entity[key];
+    }
+  });
+  console.log(Object.values(row.entity).join('\n'));
+  let aux = document.createElement('input');
+  aux.setAttribute('value', Object.values(row.entity).join('\t'));
+  document.body.appendChild(aux);
+  aux.select();
+  document.execCommand('copy');
+  document.body.removeChild(aux);
+});
+
+gridApi.selection.on.rowSelectionChangedBatch(scope, function(rows) {
+  console.log(rows);
+
+  rows.map((row) =&gt; {
+    Object.keys(row.entity).forEach((key) =&gt; {
+      if (key === '$$hashKey') {
+        delete row.entity[key];
+      }
+    });
+  });
+
+  let result = Object.keys(rows[0].entity).map((r) =&gt; {
+    return r.slice(0, r.length - 1);
+  }).join('\t') + '\n';
+  for (let i = 0; i &lt; rows.length; ++i) {
+    if (i &gt; 500) {
+      break;
+    }
+    result += Object.values(rows[i].entity).join('\t');
+    if (i &lt; rows.length - 1) {
+      result += '\n';
+    }
+  }
+  let aux = document.createElement('textarea');
+  aux.value = result;
+  document.body.appendChild(aux);
+  aux.select();
+  document.execCommand('copy');
+  document.body.removeChild(aux);
+});
+</code></pre>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#0-%E6%97%A7%E7%89%88%E6%9C%AC%E9%97%AE%E9%A2%98">0. 旧版本问题</a></li>
+<li><a href="#1-%E5%BC%80%E5%90%AF-kerberos-%E6%89%BE%E4%B8%8D%E5%88%B0-tgt-%E9%97%AE%E9%A2%98">1. 开启 kerberos 找不到 tgt 问题</a></li>
+<li><a href="#2-%E6%96%B0%E7%89%88%E6%9C%AC-hive-jdbc-proxyuser-%E9%85%8D%E7%BD%AE%E7%9A%84%E5%8F%98%E5%8C%96">2. 新版本 hive jdbc proxyuser 配置的变化</a></li>
+<li><a href="#3-notebook-%E8%BF%81%E7%A7%BB">3. notebook 迁移</a>
+<ul>
+<li><a href="#31-%E6%97%A7%E6%95%B0%E6%8D%AE%E8%BF%81%E7%A7%BB%E8%BF%87%E7%A8%8B">3.1 旧数据迁移过程</a></li>
+<li><a href="#32-%E5%8D%87%E7%BA%A7-notebook-%E6%9D%83%E9%99%90%E9%97%AE%E9%A2%98">3.2 升级 notebook 权限问题</a></li>
+<li><a href="#33-note-%E9%BB%98%E8%AE%A4%E7%BB%91%E5%AE%9A%E8%A7%A3%E9%87%8A%E5%99%A8%E4%B8%A2%E5%A4%B1%E9%97%AE%E9%A2%98">3.3 note 默认绑定解释器丢失问题</a></li>
+</ul>
+</li>
+<li><a href="#4-shiro-%E6%96%B0%E5%A2%9E%E9%85%8D%E7%BD%AE%E5%AF%BC%E8%87%B4%E8%87%AA%E5%8A%A8%E7%99%BB%E5%BD%95%E5%A4%B1%E8%B4%A5%E9%97%AE%E9%A2%98">4. shiro 新增配置导致自动登录失败问题</a></li>
+<li><a href="#5-%E6%9F%A5%E8%AF%A2%E7%BB%93%E6%9E%9C%E6%97%A0%E6%B3%95%E9%80%89%E4%B8%AD%E5%A4%8D%E5%88%B6">5 查询结果无法选中复制</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://yaofun.top/post/Apple Wacth 初体验/">
+              <h3 class="post-title">
+                Apple Wacth 初体验
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+            <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+<div id="gitalk-container"></div>
+
+<script>
+
+  var gitalk = new Gitalk({
+    clientID: '61bda7106769d83cf29f',
+    clientSecret: '74f87c9c12044efbd81a2e6c24f1a3718e31be47',
+    repo: 'goby-ao.github.io',
+    owner: 'goby-ao',
+    admin: ['goby-ao'],
+    id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+    distractionFreeMode: false  // Facebook-like distraction free mode
+  })
+
+  gitalk.render('gitalk-container')
+
+</script>
+
+          
+
+          
+        
+
+        <div class="site-footer">
+  Powered by &nbsp; <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> &nbsp;/ Hosted on GitHub Page
+  <a class="rss" href="https://yaofun.top/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

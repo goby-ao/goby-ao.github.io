@@ -1,0 +1,350 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HBase - Hive 外部表引发的读性能问题 | Yao&#39;s Blog</title>
+<link rel="shortcut icon" href="https://yaofun.top/favicon.ico?v=1653915643763">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://yaofun.top/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="HBase - Hive 外部表引发的读性能问题 | Yao&#39;s Blog - Atom Feed" href="https://yaofun.top/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NFP4JGDBYW"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NFP4JGDBYW');
+</script>
+
+
+    <meta name="description" content="一次由 Hive HBase 外部表引发的读性能问题
+1 问题
+近期业务反馈 HBase GET 读性能不佳，查看监控，每天有几个时间波段，GET P99 请求时延很高。
+2 问题原因
+定位有一个业务有 7 张 Hive HBase 外部表..." />
+    <meta name="keywords" content="HBase" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://yaofun.top">
+  <img class="avatar" src="https://yaofun.top/images/avatar.png?v=1653915643763" alt="">
+  </a>
+  <h1 class="site-title">
+    Yao&#39;s Blog
+  </h1>
+  <p class="site-description">
+    「晚来天欲雪，能饮一杯无」
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/goby-ao" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://twitter.com/Sunflowers724" target="_blank">
+          <i class="ri-twitter-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://weibo.com/yaoyao724" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              HBase - Hive 外部表引发的读性能问题
+            </h2>
+            <div class="post-info">
+              <span>
+                2022-05-16
+              </span>
+              <span>
+                7 min read
+              </span>
+              
+                <a href="https://yaofun.top/tag/Cx9V7jSSN/" class="post-tag">
+                  # HBase
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <h1 id="一次由-hive-hbase-外部表引发的读性能问题">一次由 Hive HBase 外部表引发的读性能问题</h1>
+<h2 id="1-问题">1 问题</h2>
+<p>近期业务反馈 HBase GET 读性能不佳，查看监控，每天有几个时间波段，GET P99 请求时延很高。</p>
+<h2 id="2-问题原因">2 问题原因</h2>
+<p>定位有一个业务有 7 张 Hive HBase 外部表，每天有两个时间定时通过 sql 的方式，并发导出全表到 hive 。代码类似于：</p>
+<pre><code class="language-sql"> insert into table_hive select * from hive_hbase_external_table;
+</code></pre>
+<p>相当于每天定时并发对 7 张大的 HBase <strong>全表 Scan</strong>，<strong>Scan 默认会写缓存</strong>，这个会导致：</p>
+<ol>
+<li>Bucket Cache 被 scan block 写满， 缓存开始淘汰，出现 cache miss (缓存命中率降低) 和 cache eviction (缓存淘汰）。<strong>cache 命中率直接影响 HBase 读性能。</strong></li>
+<li>出现 I/O 风暴，读请求没有命中缓存需要读 hdfs，此时由于 I/O 瓶颈，<strong>读性能问题进一步被放大。</strong></li>
+</ol>
+<h2 id="3-问题分析">3 问题分析</h2>
+<p>查看这几个时间段 GET 请求没有明显变多(单节点 1k/s)，而 READ 请求猛增，单节点 read request 达到 600-900k/s。</p>
+<blockquote>
+<p>推断是出现了大量 scan 或者大 scan。这里为什么要推理，因为 Ambari grafana 的 HBase scan 请求数无法显示。</p>
+</blockquote>
+<p>缓存命中率直接影响读性能，查看 BucketCache 命中率情况，这个时间段 cache miss 和 eviction 都陡增。</p>
+<blockquote>
+<p>推断是 scan 导致缓存写满，所以出现缓存被驱逐（eviction）。</p>
+</blockquote>
+<p>没有命中缓存，就会走 hdfs，查看 datanode 监控有大量的 block read，查看 datanode 磁盘监控，磁盘 I/O 这段时间被打满。</p>
+<blockquote>
+<p>大量的读导致了磁盘瓶颈，读性能更差了</p>
+</blockquote>
+<p>到这里，剩下的就是揪出是谁在进行大 Scan 操作，HBase 上承载的业务众多，一个个问业务不太现实。</p>
+<p>于是通过热点 Regionserver 节点的日志看到该时间段，有一些 Scan 的报错，找到表名，拿去一问业务就问出来问题了。</p>
+<p>业务每天定时并发对 7 张 HBase 大表进行全表 Scan，查询导出数据到 Hive。</p>
+<h2 id="4-hive-hbase-外部表使用与坑">4 Hive HBase 外部表使用与坑</h2>
+<p>创建 HBase 的 hive 外部表典型建表语句如下，rowkey 字段为 hbase 的 rowkey，label 为列族：</p>
+<pre><code class="language-sql">CREATE EXTERNAL TABLE user_profile.mix_label_scene_tag_test_1(rowkey string COMMENT 'rowkey', label map&lt;string,string&gt; COMMENT 'cf')
+ROW FORMAT SERDE 'org.apache.hadoop.hive.hbase.HBaseSerDe'
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+WITH SERDEPROPERTIES('hbase.columns.mapping'=':key,label:')
+TBLPROPERTIES('hbase.table.name'='profile:mix_label_scene_tag_pre_release')
+</code></pre>
+<p>HBase 相关的参数可以直接通过 set 的方式配置进去，例如：</p>
+<pre><code class="language-sql">set hbase.client.scanner.timeout.period=600000;
+</code></pre>
+<p>但是这里有一个坑需要注意，默认 hive hbase 外部表 scan 是会缓存 block 的，这个不容易被开发注意到。如果有大量的 scan 类型的批处理、 mr 任务等，会对缓存是一种破坏性的写入。影响其他正常读请求。HBase 官方也有建议，针对批处理类型的 scan 操作，要设置 setCacheBlocks 为 false：</p>
+<blockquote>
+<p>Scan instances can be set to use the block cache in the RegionServer via the setCacheBlocks method. For input Scans to MapReduce jobs, this should be false.  https://hbase.apache.org/book.html#perf.hbase.client.blockcache</p>
+</blockquote>
+<p>Hive 社区也有人提了这个问题 <a href="https://issues.apache.org/jira/browse/HIVE-20484">HIVE-20484</a>，在 Hive 3 以上的版本进行了修复，将外部表 scan.setCacheBlocks 默认设为 false。hive 这块的代码如下：</p>
+<pre><code class="language-java">public static final String HBASE_SCAN_CACHEBLOCKS = &quot;hbase.scan.cacheblock&quot;;
+
+...
+
+String scanCacheBlocks = tableProperties.getProperty(HBaseSerDe.HBASE_SCAN_CACHEBLOCKS);
+if (scanCacheBlocks != null) {
+  jobProperties.put(HBaseSerDe.HBASE_SCAN_CACHEBLOCKS, scanCacheBlocks);
+}
+
+...
+
+String scanCacheBlocks = jobConf.get(HBaseSerDe.HBASE_SCAN_CACHEBLOCKS);
+if (scanCacheBlocks != null) {
+  scan.setCacheBlocks(Boolean.parseBoolean(scanCacheBlocks));
+}
+</code></pre>
+<p>如果没法升级 hive ，解决办法有两个：</p>
+<ol>
+<li>重新创建外部表，SERDEPROPERTIES 里指定： 'hbase.scan.cacheblock'='false'，这种方式可以屏蔽 scan 写缓存，又保留正常的 get 读缓存。</li>
+</ol>
+<pre><code class="language-sql">CREATE EXTERNAL TABLE user_profile.mix_label_scene_tag(rowkey string COMMENT 'rowkey', label map&lt;string,string&gt; COMMENT 'cf')
+ROW FORMAT SERDE 'org.apache.hadoop.hive.hbase.HBaseSerDe'
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+WITH SERDEPROPERTIES('hbase.columns.mapping'=':key,label:','hbase.scan.cacheblock'='false')
+TBLPROPERTIES('hbase.table.name'='profile:mix_label_scene_tag_pre_release')
+</code></pre>
+<ol start="2">
+<li>修改表的属性，修改列族的缓存策略，这种方式全局屏蔽读缓存，会影响正常的 get 读写缓存</li>
+</ol>
+<pre><code class="language-shell">alter 'profile:mix_label_scene_tag', {NAME =&gt; 'label', BLOCKCACHE =&gt; 'false'}
+</code></pre>
+<p>值得一提的是，setCacheBlocks 是设置：是否把读取的数据写入到缓存中。所以不管怎么设定 setCacheBlocks 的 bool 值，HBase 默认的读请求都会先查缓存。</p>
+<h3 id="41-hive-hbase-外部表相关参数">4.1 Hive HBase 外部表相关参数</h3>
+<p>附上其他的配置，<a href="https://github.com/apache/hive/blob/master/hbase-handler/src/java/org/apache/hadoop/hive/hbase/HBaseSerDe.java">源码</a>：</p>
+<pre><code class="language-java"> public static final String HBASE_COLUMNS_MAPPING = &quot;hbase.columns.mapping&quot;;
+  public static final String HBASE_TABLE_NAME = &quot;hbase.table.name&quot;;
+  public static final String HBASE_TABLE_DEFAULT_STORAGE_TYPE = &quot;hbase.table.default.storage.type&quot;;
+  public static final String HBASE_KEY_COL = &quot;:key&quot;;
+  public static final String HBASE_TIMESTAMP_COL = &quot;:timestamp&quot;;
+  public static final String HBASE_PUT_TIMESTAMP = &quot;hbase.put.timestamp&quot;;
+  public static final String HBASE_COMPOSITE_KEY_CLASS = &quot;hbase.composite.key.class&quot;;
+  public static final String HBASE_COMPOSITE_KEY_TYPES = &quot;hbase.composite.key.types&quot;;
+  public static final String HBASE_COMPOSITE_KEY_FACTORY = &quot;hbase.composite.key.factory&quot;;
+  public static final String HBASE_STRUCT_SERIALIZER_CLASS = &quot;hbase.struct.serialization.class&quot;;
+  public static final String HBASE_SCAN_CACHE = &quot;hbase.scan.cache&quot;;
+  public static final String HBASE_SCAN_CACHEBLOCKS = &quot;hbase.scan.cacheblock&quot;;
+  public static final String HBASE_SCAN_BATCH = &quot;hbase.scan.batch&quot;;
+  public static final String HBASE_AUTOGENERATE_STRUCT = &quot;hbase.struct.autogenerate&quot;;
+  /**
+   * Determines whether a regex matching should be done on the columns or not. Defaults to true.
+   * &lt;strong&gt;WARNING: Note that currently this only supports the suffix wildcard .*&lt;/strong&gt;
+   */
+  public static final String HBASE_COLUMNS_REGEX_MATCHING = &quot;hbase.columns.mapping.regex.matching&quot;;
+  /**
+   * Defines the type for a column.
+   **/
+  public static final String SERIALIZATION_TYPE = &quot;serialization.type&quot;;
+
+  /**
+   * Defines if the prefix column from hbase should be hidden.
+   * It works only when @HBASE_COLUMNS_REGEX_MATCHING is true.
+   * Default value of this parameter is false
+   */
+  public static final String HBASE_COLUMNS_PREFIX_HIDE = &quot;hbase.columns.mapping.prefix.hide&quot;;
+</code></pre>
+<h2 id="5-qa">5 QA</h2>
+<ul>
+<li>HBase 怎么提升缓存命中率，除了缓存命中率，还有什么会影响读性能？</li>
+<li>HBase 如何监控大 Scan？</li>
+<li>HBase 如何进行表级别的监控？</li>
+<li>HBase Hive 外部表如何有效监控管理，避免用户随意 scan 操作？</li>
+</ul>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li><a href="#%E4%B8%80%E6%AC%A1%E7%94%B1-hive-hbase-%E5%A4%96%E9%83%A8%E8%A1%A8%E5%BC%95%E5%8F%91%E7%9A%84%E8%AF%BB%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98">一次由 Hive HBase 外部表引发的读性能问题</a>
+<ul>
+<li><a href="#1-%E9%97%AE%E9%A2%98">1 问题</a></li>
+<li><a href="#2-%E9%97%AE%E9%A2%98%E5%8E%9F%E5%9B%A0">2 问题原因</a></li>
+<li><a href="#3-%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90">3 问题分析</a></li>
+<li><a href="#4-hive-hbase-%E5%A4%96%E9%83%A8%E8%A1%A8%E4%BD%BF%E7%94%A8%E4%B8%8E%E5%9D%91">4 Hive HBase 外部表使用与坑</a>
+<ul>
+<li><a href="#41-hive-hbase-%E5%A4%96%E9%83%A8%E8%A1%A8%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0">4.1 Hive HBase 外部表相关参数</a></li>
+</ul>
+</li>
+<li><a href="#5-qa">5 QA</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://yaofun.top/post/hbase-du-dong-bucketcache-ri-zhi-tong-ji-xin-xi/">
+              <h3 class="post-title">
+                HBase - 读懂 bucketcache 日志统计信息
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+            <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+<div id="gitalk-container"></div>
+
+<script>
+
+  var gitalk = new Gitalk({
+    clientID: '61bda7106769d83cf29f',
+    clientSecret: '74f87c9c12044efbd81a2e6c24f1a3718e31be47',
+    repo: 'goby-ao.github.io',
+    owner: 'goby-ao',
+    admin: ['goby-ao'],
+    id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+    distractionFreeMode: false  // Facebook-like distraction free mode
+  })
+
+  gitalk.render('gitalk-container')
+
+</script>
+
+          
+
+          
+        
+
+        <div class="site-footer">
+  Powered by &nbsp; <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> &nbsp;/ Hosted on GitHub Page
+  <a class="rss" href="https://yaofun.top/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

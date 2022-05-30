@@ -1,0 +1,393 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Apache Zeppelin 基于 kerberos 多租户集成 | Yao&#39;s Blog</title>
+<link rel="shortcut icon" href="https://yaofun.top/favicon.ico?v=1653915643763">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://yaofun.top/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Apache Zeppelin 基于 kerberos 多租户集成 | Yao&#39;s Blog - Atom Feed" href="https://yaofun.top/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NFP4JGDBYW"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NFP4JGDBYW');
+</script>
+
+
+    <meta name="description" content="0 前言
+构建大数据平台初期，我们的数据分析师做数据开发需要 ssh 到机器上，面对黑黑的 terminal 进行开发，为了提升开发效率，架构师让我开发一个 hive 可视化查询页面，支持 hive 查询，数据可视化，数据导出等。本着开发前..." />
+    <meta name="keywords" content="Zeppelin,Kerberos" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://yaofun.top">
+  <img class="avatar" src="https://yaofun.top/images/avatar.png?v=1653915643763" alt="">
+  </a>
+  <h1 class="site-title">
+    Yao&#39;s Blog
+  </h1>
+  <p class="site-description">
+    「晚来天欲雪，能饮一杯无」
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/goby-ao" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://twitter.com/Sunflowers724" target="_blank">
+          <i class="ri-twitter-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://weibo.com/yaoyao724" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Apache Zeppelin 基于 kerberos 多租户集成
+            </h2>
+            <div class="post-info">
+              <span>
+                2019-04-22
+              </span>
+              <span>
+                9 min read
+              </span>
+              
+                <a href="https://yaofun.top/tag/E-HMRHMzQ/" class="post-tag">
+                  # Zeppelin
+                </a>
+              
+                <a href="https://yaofun.top/tag/0t18dFEmIl/" class="post-tag">
+                  # Kerberos
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <h2 id="0-前言">0 前言</h2>
+<p>构建大数据平台初期，我们的数据分析师做数据开发需要 ssh 到机器上，面对黑黑的 terminal 进行开发，为了提升开发效率，架构师让我开发一个 hive 可视化查询页面，支持 hive 查询，数据可视化，数据导出等。本着开发前先调研轮子的原则，一番调研到了两个轮子：</p>
+<ul>
+<li>Hue ： cloudera 生态自带组件，功能强大，但是仅限于 cloudera 生态圈</li>
+<li>Zeppelin ：Apache 开源顶级项目，支持 hive spark 相关开发，支持数据导出，数据可视化等。同时还支持一系列组件；</li>
+</ul>
+<p>ok，少造轮子，拥抱开源，我就把 Zeppelin 第一版本（0.6.0）搭起来了，当然，途中也遇到不少坑。</p>
+<p>在 shiro 中配置了一个 admin 用户，大家都可以登陆，进行 Spark Hive 开发和数据可视化等。（印象中 0.6.0 版本都不支持配置用户？）<br>
+这个版本的问题是：所以人都是一个账号登陆，同样的权限执行 hive  spark 类任务。用户的权限没有隔离，对于大型企业来说会带来一系列安全隐患，这也是数据平台都要面对问题。这样，多租户应运而生。</p>
+<h2 id="1-多租户">1 多租户</h2>
+<p>每个用户对应一个独立账号 - user，用户归为一个分组 - group，权限通过linux hdfs 组来控制（linux 用户文件系统 group 和 hdfs group）</p>
+<h3 id="11-iam">1.1 IAM</h3>
+<p>自研统一身份认证服务 IAM (Identity and Access Management )，提供身份认证和权限管理功能，可以管理用户（比如员工、系统或应用程序）账号，对账号的权限资源范围进行控制</p>
+<p>IAM 根据用户职责规划用户组，并根据职责为用户组授权，再将用户加入到用户组中，使得用户具有所属用户组中的权限。</p>
+<p>当前 IAM 用户的组（项目）来确定，创建用户后，分配对应的组，创建对应的权限。<br>
+先创建一个组（group）- 项目 - music</p>
+<ul>
+<li>元数据存储</li>
+<li>hdfs 目录创建项目的根目录， /data/music ，目录权限为 755 组为：music</li>
+</ul>
+<p>新建一个用户 yao，所属组 (项目) music。</p>
+<ul>
+<li>存储用户名，密码，分组等元数据</li>
+<li>将用户，组相关信息 写入 LDAP，供后续 SSSD 使用</li>
+</ul>
+<h3 id="12-ldap-kerberos-sssd">1.2 LDAP + Kerberos + SSSD</h3>
+<p>认证体系一般包含账号，认证，授权，审计这些部分组成。LDAP 用来做账号管理，Kerberos作为认证。授权一般来说是由应用来决定的，通过在 LDAP 数据库中配置一些属性可以让应用程序来进行授权判断。</p>
+<p>单纯基于 LDAP 已经能实现集中的帐号和认证管理了，但考虑到 LDAP 里的密码信息是直 接存储在数据库中，在认证时需要将用户名和密码直接发送给 LDAP 服务器，在不安全和可信的环境下这种模式会有安全隐患。</p>
+<p>因此使用 Kerberos 来实现用户认证。Kerberos 相关的数据也需要存储在某个数据库中，在这里我们选择使用 LDAP 作为其数据库，目的是为了数据备份的方便（只需要统一备份 LDAP 数据库即可）。</p>
+<p>linux 上的认证授权基于 SSSD 来实现，SSSD 可以接入 LDAP 的数据，我们可以通过官方介绍有一个比较清晰的了解</p>
+<blockquote>
+<p>Most system authentication is configured locally, which means that services must check with a local user store to determine users and credentials. What SSSD does is allow a local service to check with a local cache in SSSD, but that cache may be taken from any variety of remote identity providers — an LDAP directory, an Identity Management domain, Active Directory, possibly even a Kerberos realm.</p>
+</blockquote>
+<p>正式因为有了 SSSD， 我们创建租户账号后，可以不用做任何操作，自动 ssh 登陆到机器。</p>
+<h2 id="2-zepplin-多租户支持现状">2 Zepplin 多租户支持现状</h2>
+<p>当前 Zeppelin 官方 feature 上写的是 multi-user，刚开始很容易理解为支持多租户。经过一番研究，代码走读，发现 Zeppelin 支持的确实是多用户，即使支持用户模拟 <code>Interpreter User Impersonation</code>。但是用户实际执行 hive 或者 spark 操作的时候， Kerberos 认证只能通过 keytab 的方式，且一个 interpreter 只能指定一个 keytab。</p>
+<p>我们通过 一段 jdbc interperter 源码来分析</p>
+<pre><code>
+  public static AuthenticationMethod getAuthtype(Properties properties) {
+    AuthenticationMethod authType;
+    try {
+      // 前端获取认证类型
+      authType = AuthenticationMethod.valueOf(properties.getProperty(&quot;zeppelin.jdbc.auth.type&quot;)
+          .trim().toUpperCase());
+    } catch (Exception e) {
+      LOGGER.error(String.format(&quot;Invalid auth.type detected with value %s, defaulting &quot; +
+          &quot;auth.type to SIMPLE&quot;, properties.getProperty(&quot;zeppelin.jdbc.auth.type&quot;)));
+      authType = SIMPLE;
+    }
+    return authType;
+  }
+</code></pre>
+<p>如果是 Kerberos 认证类型，通过配置的 keytab 初始话认证信息。这里就可以看出，keytab 的配置是基于 interpreter 配置的，而不是基于用户动态变化的；<br>
+而实际我们大数据平台 Kerberos 认证是基于用户级，用户通过执行 kinit 命令 ，输入密码完成认证，Zeppelin  当前不支持独立租户认证执行任务。</p>
+<pre><code>public static void createSecureConfiguration(Properties properties) {
+    AuthenticationMethod authType = getAuthtype(properties);
+    switch (authType) {
+        case KERBEROS:
+          Configuration conf = new org.apache.hadoop.conf.Configuration();
+          conf.set(&quot;hadoop.security.authentication&quot;, KERBEROS.toString());
+          UserGroupInformation.setConfiguration(conf);
+          try {
+
+            UserGroupInformation.loginUserFromKeytab(
+                properties.getProperty(&quot;zeppelin.jdbc.principal&quot;),
+                //  interpreter keytab 固化
+                properties.getProperty(&quot;zeppelin.jdbc.keytab.location&quot;)
+            );
+          } catch (IOException e) {
+            LOGGER.error(&quot;Failed to get either keytab location or principal name in the &quot; +
+                &quot;interpreter&quot;, e);
+          }
+    }
+  }
+
+</code></pre>
+<p>为了让 Zeppelin 支持基于租户 kinit 模式的独立认证方式，我们对 Zeppelin 进行了一系列代码，脚本改写，实现多租户。</p>
+<h2 id="3-zeppelin-多租户集成">3 Zeppelin 多租户集成</h2>
+<h3 id="31-基础-zeppelin-环境搭建">3.1 基础 Zeppelin 环境搭建</h3>
+<p>可以参考 Apache 官方文档，不复杂</p>
+<h3 id="32-交互式分析页面-租户登录认证拦截配置">3.2 交互式分析页面 - 租户登录认证拦截配置</h3>
+<p>进入 Zeppelin server 配置目录 conf/shiro.ini 配置 LDAP<br>
+使得 Zeppelin 登录使用 LDAP 里面的用户进行登录校验，参考的配置如下</p>
+<pre><code>
+ldapRealm = org.apache.zeppelin.realm.LdapGroupRealm
+# search base for ldap groups (only relevant for LdapGroupRealm):
+ldapRealm.contextFactory.environment[ldap.searchBase] = dc=COMPANY,dc=COM
+ldapRealm.contextFactory.url = [ldap://ldap.test.com:389](ldap://ldap.test.com:389/)
+ldapRealm.userDnTemplate = uid={0},ou=Users,dc=COMPANY,dc=COM
+ldapRealm.contextFactory.authenticationMechanism = simple
+</code></pre>
+<p>这样我们多租户可以登陆啦，剩下待解决的问题就是，多租户独立认证访问集群服务。</p>
+<h3 id="33-用户名-密码-存储服务">3.3 用户名 / 密码 存储服务</h3>
+<p>为了实现多租户的独立认证，不同模块的无缝登录认证，避免多次密码输入和流程中断；</p>
+<p>笔者改写 Zeppelin Server 端登陆部分的源码，将租户登录后的用户名和密码通过加密存储在本地轻量级数据库，以备后续程序调用。</p>
+<p>当然这里存储方案有两种供选择：</p>
+<ul>
+<li>直接写入 linxu 本地文件：实现起来快，但是有安全隐患</li>
+<li>写入数据库：加密存储，高可靠</li>
+</ul>
+<h3 id="34-租户自动化认证模块-基于-expect-的脚本">3.4 租户自动化认证模块 – 基于 Expect 的脚本</h3>
+<ul>
+<li>新增 <code>kinit.sh</code> 脚本, 传入租户用户名，密码，完成 kinit 操作<br>
+-    修改了 <code>interpreter.sh</code> 新增 expect su 实现租户自动化的免密登录，并调用认证脚本进行 kerberos 认证。<br>
+-    租户认证通过后，启动该租户对应的组件解释器，实现组件服务监听，接受客户端请求。<br>
+kinit 脚本就比较简单</li>
+</ul>
+<pre><code>#!/bin/bash
+# kinit with user and password
+user=$1
+password=$2
+echo &quot;${password}&quot; | kinit $user
+</code></pre>
+<p>expect 脚本代码片段，提供两种方式自动登陆，su 和 ssh，由于 ssh 登陆是临时会话， kerberos 认证生成的票据过期时间短，后面改成 su 的方式。</p>
+<pre><code>auto_su () {
+    expect -c &quot;set timeout -1;
+               spawn su $2 -c \&quot;${@:3}\&quot;;
+               expect {
+                    *assword:* {
+                                send $1\r;
+                                }
+                    eof
+               }
+               &quot;
+}
+
+auto_smart_ssh () {
+    expect -c &quot;set timeout -1;
+                spawn ssh -o StrictHostKeyChecking=no $2 ${@:3};
+                expect {
+                    *assword:* {send -- $1\r;
+                                 expect {
+                                    *denied* {exit 2;}
+                                    eof
+                                 }
+                    }
+                    eof         {exit 1;}
+                &quot;
+    return $?
+}
+</code></pre>
+<p>总体流程如如下图所示：<br>
+<img src="https://yaofun.top/post-images/1653913107702.png" alt="" loading="lazy"></p>
+<h2 id="4-总结">4 总结</h2>
+<p>总结下这种方案的优点：</p>
+<ol>
+<li>在已有多租户大数据平台下，基于开源工具快速开发，只需修改少量 Zeppelin 源码，实现多租户交互式查询系统，实现多租户据隔离，保证集群数据安全性。</li>
+<li>基于Zeppelin + LDAP + Kerberos + Expect 脚本 + 用户密码存储服务模式， 实现前端查询平台与大数据系统平台，无缝衔接，完成统一用户登录认证，平台服务认证授权。</li>
+<li>通过shell expect 脚本结合本地加解密存储服务，实现租户无密码，单点登录，统一认证访问 Hadoop Hive Spark HBase 等大数据组件，实现交互式查询分析服务。</li>
+</ol>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#0-%E5%89%8D%E8%A8%80">0 前言</a></li>
+<li><a href="#1-%E5%A4%9A%E7%A7%9F%E6%88%B7">1 多租户</a>
+<ul>
+<li><a href="#11-iam">1.1 IAM</a></li>
+<li><a href="#12-ldap-kerberos-sssd">1.2 LDAP + Kerberos + SSSD</a></li>
+</ul>
+</li>
+<li><a href="#2-zepplin-%E5%A4%9A%E7%A7%9F%E6%88%B7%E6%94%AF%E6%8C%81%E7%8E%B0%E7%8A%B6">2 Zepplin 多租户支持现状</a></li>
+<li><a href="#3-zeppelin-%E5%A4%9A%E7%A7%9F%E6%88%B7%E9%9B%86%E6%88%90">3 Zeppelin 多租户集成</a>
+<ul>
+<li><a href="#31-%E5%9F%BA%E7%A1%80-zeppelin-%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA">3.1 基础 Zeppelin 环境搭建</a></li>
+<li><a href="#32-%E4%BA%A4%E4%BA%92%E5%BC%8F%E5%88%86%E6%9E%90%E9%A1%B5%E9%9D%A2-%E7%A7%9F%E6%88%B7%E7%99%BB%E5%BD%95%E8%AE%A4%E8%AF%81%E6%8B%A6%E6%88%AA%E9%85%8D%E7%BD%AE">3.2 交互式分析页面 - 租户登录认证拦截配置</a></li>
+<li><a href="#33-%E7%94%A8%E6%88%B7%E5%90%8D-%E5%AF%86%E7%A0%81-%E5%AD%98%E5%82%A8%E6%9C%8D%E5%8A%A1">3.3 用户名 / 密码 存储服务</a></li>
+<li><a href="#34-%E7%A7%9F%E6%88%B7%E8%87%AA%E5%8A%A8%E5%8C%96%E8%AE%A4%E8%AF%81%E6%A8%A1%E5%9D%97-%E5%9F%BA%E4%BA%8E-expect-%E7%9A%84%E8%84%9A%E6%9C%AC">3.4 租户自动化认证模块 – 基于 Expect 的脚本</a></li>
+</ul>
+</li>
+<li><a href="#4-%E6%80%BB%E7%BB%93">4 总结</a></li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://yaofun.top/post/hbase-scan-zhong-setcaching-setmaxresultsize-setbatch-jie-huo/">
+              <h3 class="post-title">
+                HBase - Scan 中 setCaching setMaxResultSize setBatch 解惑
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+            <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+<div id="gitalk-container"></div>
+
+<script>
+
+  var gitalk = new Gitalk({
+    clientID: '61bda7106769d83cf29f',
+    clientSecret: '74f87c9c12044efbd81a2e6c24f1a3718e31be47',
+    repo: 'goby-ao.github.io',
+    owner: 'goby-ao',
+    admin: ['goby-ao'],
+    id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+    distractionFreeMode: false  // Facebook-like distraction free mode
+  })
+
+  gitalk.render('gitalk-container')
+
+</script>
+
+          
+
+          
+        
+
+        <div class="site-footer">
+  Powered by &nbsp; <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> &nbsp;/ Hosted on GitHub Page
+  <a class="rss" href="https://yaofun.top/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

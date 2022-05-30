@@ -1,0 +1,318 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Poker 键盘编程 | Yao&#39;s Blog</title>
+<link rel="shortcut icon" href="https://yaofun.top/favicon.ico?v=1653915643763">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://yaofun.top/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="Poker 键盘编程 | Yao&#39;s Blog - Atom Feed" href="https://yaofun.top/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-NFP4JGDBYW"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-NFP4JGDBYW');
+</script>
+
+
+    <meta name="description" content="Poker 用了 5 年多了，这里记录一下如何对 Poker 进行编程，配置优化。
+首先说下我的 Poker 的型号： 2016 版的 Poker 61 键（2016 年 11 月花了 289 RMB 买的 ）
+另外 2017 年好像出了一..." />
+    <meta name="keywords" content="数码" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="//cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.5.1/build/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://yaofun.top">
+  <img class="avatar" src="https://yaofun.top/images/avatar.png?v=1653915643763" alt="">
+  </a>
+  <h1 class="site-title">
+    Yao&#39;s Blog
+  </h1>
+  <p class="site-description">
+    「晚来天欲雪，能饮一杯无」
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+        <a href="https://github.com/goby-ao" target="_blank">
+          <i class="ri-github-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://twitter.com/Sunflowers724" target="_blank">
+          <i class="ri-twitter-line"></i>
+        </a>
+      
+    
+      
+        <a href="https://weibo.com/yaoyao724" target="_blank">
+          <i class="ri-weibo-line"></i>
+        </a>
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              Poker 键盘编程
+            </h2>
+            <div class="post-info">
+              <span>
+                2022-02-20
+              </span>
+              <span>
+                5 min read
+              </span>
+              
+                <a href="https://yaofun.top/tag/LXEunZd4L/" class="post-tag">
+                  # 数码
+                </a>
+              
+            </div>
+            
+              <img class="post-feature-image" src="https://yaofun.top/post-images/Poker 键盘编程.png" alt="">
+            
+            <div class="post-content-wrapper">
+              <div class="post-content" v-pre>
+                <p>Poker 用了 5 年多了，这里记录一下如何对 Poker 进行编程，配置优化。<br>
+首先说下我的 Poker 的型号： 2016 版的 Poker 61 键（2016 年 11 月花了 289 RMB 买的 ）<br>
+另外 2017 年好像出了一个 Poker 2，好像稍微有点区别。所以本文所述只针对 2016 年的 Poker 。</p>
+<p>备注：以下都是参考知乎同学的[配置]</p>
+<h2 id="1poker-键盘介绍与相关设置">1.Poker 键盘介绍与相关设置</h2>
+<h3 id="11-层的概念">1.1 层的概念</h3>
+<p><strong>普通层</strong>  普通层就是最常见的那一层。键盘上最大的字母正刻的那个功能。通过图片看，文字正刻在键帽上的功能。所有的键都在普通层有含义。</p>
+<p><strong>FN 层</strong>  也就是组合键 FN + 一个键，实现一个效果，例如 FN + 3 =&gt; F3，可以认为按下 FN 就是进入 FN 层了</p>
+<p><strong>PN 层</strong>  编程层，完全可以编程自定义的一个层。编程给 a 键，就要按 Pn+a 来使用。按下PN 进入 PN 层了，另外，通过右 FN + 右 Shift 可以直接进入 PN 层，直接按 a 等同于是 PN + a</p>
+<h3 id="12-键盘背部开关设置">1.2 键盘背部开关设置</h3>
+<p>首先键盘背部有 4 个开关 1234，功能如下：</p>
+<ol>
+<li>交换 CapLock （大小写）和 Win 键</li>
+<li>将右 Ctrl 变为 ~ 键。因为键盘上 ESC 在它原本的位置，所以默认功能没有这个键。</li>
+<li>将左 Win 变为 Fn。</li>
+<li>编程写保护。相当于锁定编程。</li>
+</ol>
+<h3 id="13-poker-键盘编程方法">1.3 Poker 键盘编程方法</h3>
+<p><strong>编程方法如下：</strong></p>
+<ol>
+<li>按 PMode(FN + 右CTRL) 进入编程模式 (空格右灯闪烁)</li>
+<li>按想要对其编程的键 (空格右灯长亮) （注意：<strong>可以对组合键编程，例如将 FN + L 编程成字符串 ~</strong>）</li>
+<li>键入编程内容然后按 PN (空格右灯再次闪烁)</li>
+<li>重复步骤 2 和步骤 3 可编程其他键</li>
+<li>按 PMode(FN + 右CTRL) 退出编程模式 (空格右灯熄灭) ！</li>
+</ol>
+<p><strong>编程有什么用：</strong><br>
+常用字符串快捷键：例如把 P 编程成你的手机号，通过编程键 Pn + P 就可以输出你的手机号<br>
+对组合键编程：例如将 FN + I 编程成 `</p>
+<h2 id="2-我的使用场景与需求">2 我的使用场景与需求</h2>
+<p>首先说下我的使用场景：Windows 信仰党 + 代码党（半个 Vimer） + 日常聊天摸鱼。</p>
+<p>以下就是我的需求：</p>
+<ol>
+<li>方向键设置（vimer）</li>
+<li>Win 键必须保留（Windows 党）</li>
+<li>常用字符 <strong>~ `</strong> 方便输入 (linux vim shell)</li>
+</ol>
+<h2 id="3-配置与操作">3 配置与操作</h2>
+<h3 id="31-vim-方向键与-win-键保留">3.1 Vim 方向键与 Win 键保留</h3>
+<p>键盘默认的方向键是右下角 FN + WASD 组合键，但右下角按 FN 实在是不方便。<br>
+作为半个 Vimer，最完美的方向键当然是 vim 中的 jkhl，还差个 FN 放哪最合适？<br>
+因为我们打字准备状态是 左手四指放在 ASDF，右手四指放 JKL; 上，所以放 CapLock 的位置，是最顺手的。实现这个需求需要两步：</p>
+<ol>
+<li>把 CapLock 变成 FN</li>
+<li>把方向键 wasd 编程为 jkhl</li>
+</ol>
+<p>同时保留 Win 键。</p>
+<blockquote>
+<p>操作方法：*<em>首先将 CapsLock 编程为 Win 键（参考章节 2 的编程方法），然后打开 DIP 开关 1 和开关 3，</em></p>
+</blockquote>
+<p>这样获得了下图 1 的效果<br>
+<img src="https://yaofun.top/post-images/1653912117677.png" alt="图1：Pn 层的键位设置，灰色表示未被修改的默认配置。除了 CapsLock 变为 Fn，其余都无变化" loading="lazy"><br>
+解释下原理：</p>
+<ol>
+<li>将 CapsLock 编程为 Win 键 ，<strong>PN + CapsLock = WIN</strong></li>
+<li>打开 DIP 开关 1 : 交换 CapLock （大小写）和 Win 键，这样达成的效果是 ：<strong>CapLock 换到 Win 上了</strong>，也就是 : <strong>PN + 左下角的 WIN = WIN</strong>，<strong>这样在 PN 层，直接按 Win 就是 Win 了</strong>。而此次 WIN 换到 CapLock 的位置了。</li>
+<li>打开 DIP 开关 3：将左 Win 变为 Fn，也就是 <strong>CapLock 位置变成 FN</strong> 了。这样在普通层就没有 Win 了。</li>
+</ol>
+<p>至此，<strong>PN 层保留了 WIN ，同时 FN 换到了 CapsLock 的位置。我们可以工作在 PN 层</strong>（通过 右 FN + 右 Shift 打开，空格键会亮灯提示），剩下的步骤就是编程组合键。</p>
+<h3 id="32-方向键与常用键的设置">3.2 方向键与常用键的设置</h3>
+<p><strong>方向键</strong>：将 FN + WASD 编程为 FN + HJKL</p>
+<blockquote>
+<p>操作方法：参考 章节 2 的编程方式，唯一要注意的是，编程的源和目标都是组合键。<br>
+左键：FN + A =&gt; FN + H<br>
+下键：FN + S =&gt; FN + K<br>
+右键：FN + D =&gt; FN + L<br>
+上键：FN + W =&gt; FN + J</p>
+</blockquote>
+<p><strong>常用字符编程</strong><br>
+~ 编程为：FN + ；</p>
+<blockquote>
+<p>操作：这里可以把 DP 2开关打开，将右 Ctrl 变为 ~ 键，然后编程 右 CTRL =&gt; FN + ;</p>
+</blockquote>
+<p>` 编程为：FN + ‘</p>
+<blockquote>
+<p>操作：编程 ：FN + ESC =&gt; FN + ‘</p>
+</blockquote>
+<p>其他的键也用同样的方式编程，FN + xx 的方式。PN 层最终效果如下图：<img src="https://yaofun.top/post-images/1653912185238.png" alt="PN 层最终效果" loading="lazy"></p>
+<p>参考：<a href="https://www.zhihu.com/question/24453206/answer/336408615">https://www.zhihu.com/question/24453206/answer/336408615</a></p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li>
+<ul>
+<li><a href="#1poker-%E9%94%AE%E7%9B%98%E4%BB%8B%E7%BB%8D%E4%B8%8E%E7%9B%B8%E5%85%B3%E8%AE%BE%E7%BD%AE">1.Poker 键盘介绍与相关设置</a>
+<ul>
+<li><a href="#11-%E5%B1%82%E7%9A%84%E6%A6%82%E5%BF%B5">1.1 层的概念</a></li>
+<li><a href="#12-%E9%94%AE%E7%9B%98%E8%83%8C%E9%83%A8%E5%BC%80%E5%85%B3%E8%AE%BE%E7%BD%AE">1.2 键盘背部开关设置</a></li>
+<li><a href="#13-poker-%E9%94%AE%E7%9B%98%E7%BC%96%E7%A8%8B%E6%96%B9%E6%B3%95">1.3 Poker 键盘编程方法</a></li>
+</ul>
+</li>
+<li><a href="#2-%E6%88%91%E7%9A%84%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF%E4%B8%8E%E9%9C%80%E6%B1%82">2 我的使用场景与需求</a></li>
+<li><a href="#3-%E9%85%8D%E7%BD%AE%E4%B8%8E%E6%93%8D%E4%BD%9C">3 配置与操作</a>
+<ul>
+<li><a href="#31-vim-%E6%96%B9%E5%90%91%E9%94%AE%E4%B8%8E-win-%E9%94%AE%E4%BF%9D%E7%95%99">3.1 Vim 方向键与 Win 键保留</a></li>
+<li><a href="#32-%E6%96%B9%E5%90%91%E9%94%AE%E4%B8%8E%E5%B8%B8%E7%94%A8%E9%94%AE%E7%9A%84%E8%AE%BE%E7%BD%AE">3.2 方向键与常用键的设置</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://yaofun.top/post/Apache Zeppelin 0.7 to 0.9 版本升级 - 源码编译/">
+              <h3 class="post-title">
+                Apache Zeppelin 0.7 to 0.9 版本升级 - 源码编译
+              </h3>
+            </a>
+          </div>
+        
+
+        
+          
+            <link rel="stylesheet" href="https://unpkg.com/gitalk/dist/gitalk.css">
+<script src="https://unpkg.com/gitalk/dist/gitalk.min.js"></script>
+
+<div id="gitalk-container"></div>
+
+<script>
+
+  var gitalk = new Gitalk({
+    clientID: '61bda7106769d83cf29f',
+    clientSecret: '74f87c9c12044efbd81a2e6c24f1a3718e31be47',
+    repo: 'goby-ao.github.io',
+    owner: 'goby-ao',
+    admin: ['goby-ao'],
+    id: (location.pathname).substring(0, 49),      // Ensure uniqueness and length less than 50
+    distractionFreeMode: false  // Facebook-like distraction free mode
+  })
+
+  gitalk.render('gitalk-container')
+
+</script>
+
+          
+
+          
+        
+
+        <div class="site-footer">
+  Powered by &nbsp; <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> &nbsp;/ Hosted on GitHub Page
+  <a class="rss" href="https://yaofun.top/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
