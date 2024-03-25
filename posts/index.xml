@@ -162,7 +162,12 @@ picgo 配置自定义域名，例如我的是：https://cdn.jsdelivr.net/gh/goby
 </span></span><span style="display:flex;"><span>.<span style="color:#a6e22e">post-content</span> <span style="color:#f92672">p</span>:<span style="color:#a6e22e">has</span><span style="color:#f92672">(&gt;</span> <span style="color:#f92672">img</span>:<span style="color:#a6e22e">nth-child</span><span style="color:#f92672">(</span><span style="color:#f92672">6</span><span style="color:#f92672">))</span>{<span style="color:#66d9ef">column-count</span>:<span style="color:#ae81ff">4</span>;}
 </span></span><span style="display:flex;"><span>.<span style="color:#a6e22e">post-content</span> <span style="color:#f92672">p</span>:<span style="color:#a6e22e">has</span><span style="color:#f92672">(&gt;</span> <span style="color:#f92672">img</span>:<span style="color:#a6e22e">nth-child</span><span style="color:#f92672">(</span><span style="color:#f92672">2</span><span style="color:#f92672">))</span> <span style="color:#f92672">img</span>{<span style="color:#66d9ef">display</span>:<span style="color:#66d9ef">inherit</span>;}
 </span></span><span style="display:flex;"><span>.<span style="color:#a6e22e">post-content</span> <span style="color:#f92672">p</span>:<span style="color:#a6e22e">has</span><span style="color:#f92672">(&gt;</span> <span style="color:#f92672">img</span>:<span style="color:#a6e22e">nth-child</span><span style="color:#f92672">(</span><span style="color:#f92672">6</span><span style="color:#f92672">))</span> <span style="color:#f92672">img</span>{<span style="color:#66d9ef">margin-bottom</span>:<span style="color:#ae81ff">8</span><span style="color:#66d9ef">px</span>;}
-</span></span></code></pre></div><p><strong>5.2 图片灯箱效果</strong></p>
+</span></span></code></pre></div><p>效果如下：
+<img alt="image.png" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/20240325181122.png"></p>
+<p>实际显示：
+<img alt="IMG_2017.jpeg" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/IMG_2017.jpeg">
+<img alt="IMG_2020.jpeg" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/IMG_2020.jpeg"></p>
+<p><strong>5.2 图片灯箱效果</strong></p>
 <p>图片点击后灯箱效果，使用：<a href="https://tokinx.github.io/ViewImage/">ViewImage.js - 2kb minimalist lightbox.</a></p>
 <ol>
 <li>下载 <code>view-image.min.js</code> 到 static/js/ 下</li>
