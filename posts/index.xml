@@ -119,8 +119,7 @@
 <h3 id="进阶---使用-chathub-做前端">进阶 - 使用 chathub 做前端</h3>
 <p><a href="https://github.com/chathub-dev/chathub">chathub</a> 是一个优秀的开源项目，支持多种模型，支持配置 openroute api 的方式，但是目前的最新版已经是付费使用了，所以我找到旧版本重新编译。这个版本自带了 openrouter gpt-4 的 api 访问，基本够用了。<em>我这里稍微修改了下源码，增加了 claude-3-opus 和 openai/gpt-4-turbo-preview 模型。</em></p>
 <p><strong>编译流程（mac 为例）</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e"># 环境准备</span>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e"># 环境准备</span>
 </span></span><span style="display:flex;"><span><span style="color:#75715e"># 安装 node.js</span>
 </span></span><span style="display:flex;"><span>brew install node
 </span></span><span style="display:flex;"><span>
