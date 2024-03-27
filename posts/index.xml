@@ -1,4 +1,43 @@
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Posts on 蓝色大树🌲</title><link>https://yaofun.top/posts/</link><description>Recent content in Posts on 蓝色大树🌲</description><generator>Hugo -- gohugo.io</generator><language>en</language><copyright>&lt;a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0&lt;/a></copyright><lastBuildDate>Wed, 27 Mar 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://yaofun.top/posts/index.xml" rel="self" type="application/rss+xml"/><item><title>与 AI 对话 - 聊聊人生焦虑</title><link>https://yaofun.top/posts/2024/03/%E4%B8%8E-ai-%E5%AF%B9%E8%AF%9D-%E8%81%8A%E8%81%8A%E4%BA%BA%E7%94%9F%E7%84%A6%E8%99%91/</link><pubDate>Wed, 27 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E4%B8%8E-ai-%E5%AF%B9%E8%AF%9D-%E8%81%8A%E8%81%8A%E4%BA%BA%E7%94%9F%E7%84%A6%E8%99%91/</guid><description>我觉得我正在经历人生中最严重的焦虑之一，总感觉心里有点不舒服，经常反刍后悔自己的决定。 为了缓解焦虑，我尝试做了一些改变，之前提到的开始跑步：</description><content type="html"><![CDATA[<p><img alt="IMG_3820.jpeg" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/IMG_3820.jpeg"></p>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Posts on 蓝色大树🌲</title><link>https://yaofun.top/posts/</link><description>Recent content in Posts on 蓝色大树🌲</description><generator>Hugo -- gohugo.io</generator><language>en</language><copyright>&lt;a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0&lt;/a></copyright><lastBuildDate>Wed, 27 Mar 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://yaofun.top/posts/index.xml" rel="self" type="application/rss+xml"/><item><title>我的大模型使用方案</title><link>https://yaofun.top/posts/2024/03/%E6%88%91%E7%9A%84%E5%A4%A7%E6%A8%A1%E5%9E%8B%E4%BD%BF%E7%94%A8%E6%96%B9%E6%A1%88/</link><pubDate>Wed, 27 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E6%88%91%E7%9A%84%E5%A4%A7%E6%A8%A1%E5%9E%8B%E4%BD%BF%E7%94%A8%E6%96%B9%E6%A1%88/</guid><description>在比较高阶深入的场景，我们需要用到 GTP-4 或者 claude-3-opus 这类第一梯队的大模型，这种一般只能采用付费方案。在大部分场景用免费的就行了。下面介绍下我使用的这两</description><content type="html"><![CDATA[<p>在比较高阶深入的场景，我们需要用到 GTP-4 或者 claude-3-opus 这类第一梯队的大模型，这种一般只能采用付费方案。在大部分场景用免费的就行了。下面介绍下我使用的这两种方案。</p>
+<h2 id="付费方案">付费方案</h2>
+<p>付费我使用的是 <a href="https://openrouter.ai/">openrouter</a>  + <a href="https://github.com/chathub-dev/chathub">chathub</a>，缺点是没法传附件，其中：</p>
+<ul>
+<li><a href="https://openrouter.ai/">openrouter</a> 是一个代理，它支持上百种大模型，按需付费使用，丰俭由人，支持银联银行卡支付。</li>
+<li><a href="https://github.com/chathub-dev/chathub">chathub</a> 是前端交互对话界面，因为 openrouter 自带的前端对话界面不太好用。</li>
+</ul>
+<h3 id="openrouter-注册与充值">openrouter 注册与充值</h3>
+<p><a href="https://openrouter.ai/">OpenRouter</a> 注册后，使用银联信用卡<a href="https://openrouter.ai/account#credits">充值</a>，最低 5 刀。充值完后你就可以用了，就可以使用他自己的 <a href="https://openrouter.ai/playground">UI</a> 进行大模型对话。但是他自带的 UI 不是很好用，提供了 <a href="https://openrouter.ai/docs#quick-start">API</a> 的方式，也比较简单，如果你会前端，可以自己造个轮子，我这里使用 chathub。</p>
+<h3 id="进阶---使用-chathub-做前端">进阶 - 使用 chathub 做前端</h3>
+<p><a href="https://github.com/chathub-dev/chathub">chathub</a> 是一个优秀的开源项目，支持多种模型，支持配置 openroute api 的方式，但是目前的最新版已经是付费使用了，所以我找到旧版本重新编译。这个版本自带了 openrouter gpt-4 的 api 访问，基本够用了。<em>我这里稍微修改了下源码，增加了 claude-3-opus 和 openai/gpt-4-turbo-preview 模型。</em></p>
+<p><strong>编译流程（mac 为例）</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e"># 环境准备</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 安装 node.js</span>
+</span></span><span style="display:flex;"><span>brew install node
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 下载 chathub 源码</span>
+</span></span><span style="display:flex;"><span>git clone git@github.com:chathub-dev/chathub.git
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 编译，可以参考项目 readme</span>
+</span></span><span style="display:flex;"><span>cd chathub
+</span></span><span style="display:flex;"><span>git checkout v1.44.2
+</span></span><span style="display:flex;"><span>yarn install
+</span></span><span style="display:flex;"><span>yarn build
+</span></span></code></pre></div><p><strong>导入 chrome</strong>
+编译后生成 dist 目录，打开 chrome 插件页面，打开开发者模式，把 dist 文件夹拖进去即可。</p>
+<p><strong>配置 chathub 的 openrouter api 与模型</strong></p>
+<ul>
+<li>首先在 openrouter 里面创建一个 key</li>
+<li>然后在 chathub 设置页面填入 key 以及 gpt 模型</li>
+</ul>
+<p><img alt="image.png" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/20240327180536.png"></p>
+<h2 id="免费方案">免费方案</h2>
+<p><a href="https://claude.ai/">https://claude.ai/</a><br>
+用 google 账号注册一个</p>
+<p><a href="https://gemini.google.com/app">https://gemini.google.com/app</a>
+google 的，也很强，够用，可以上传附件</p>
+<p><a href="https://poe.com">https://poe.com</a>
+gpt3.5 免费</p>
+]]></content></item><item><title>跟 AI 聊聊我最近的焦虑</title><link>https://yaofun.top/posts/2024/03/%E8%B7%9F-ai-%E8%81%8A%E8%81%8A%E6%88%91%E6%9C%80%E8%BF%91%E7%9A%84%E7%84%A6%E8%99%91/</link><pubDate>Wed, 27 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E8%B7%9F-ai-%E8%81%8A%E8%81%8A%E6%88%91%E6%9C%80%E8%BF%91%E7%9A%84%E7%84%A6%E8%99%91/</guid><description>我觉得我正在经历人生中最严重的焦虑之一，总感觉心里有点不舒服，经常反刍后悔自己的决定。 为了缓解焦虑，我尝试做了一些改变，之前提到的开始跑步：</description><content type="html"><![CDATA[<p><img alt="IMG_3820.jpeg" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/IMG_3820.jpeg"></p>
 <p>我觉得我正在经历人生中最严重的焦虑之一，总感觉心里有点不舒服，经常反刍后悔自己的决定。</p>
 <p>为了缓解焦虑，我尝试做了一些改变，之前提到的开始跑步：<a href="https://yaofun.top/posts/2024/03/%E9%87%8D%E6%96%B0%E5%BC%80%E5%A7%8B%E8%B7%91%E6%AD%A5/">重新开始跑步 :: 蓝色大树🌲</a>，也重新开始阅读书籍。刚读完了《非暴力沟通》，也有一些收获。</p>
 <p>此外，还想跟 AI 聊聊，解开心结，为了更有效的提问交流，我需要把问题描述清楚并「写到纸上」，写的过程其实也是一种自我认识的过程。</p>
@@ -107,45 +146,6 @@
 <li>活动一下身体,舒展筋骨。</li>
 <li>花1-2分钟反思这次冥想的体验。</li>
 </ol>
-]]></content></item><item><title>我的大模型使用方案</title><link>https://yaofun.top/posts/2024/03/%E6%88%91%E7%9A%84%E5%A4%A7%E6%A8%A1%E5%9E%8B%E4%BD%BF%E7%94%A8%E6%96%B9%E6%A1%88/</link><pubDate>Wed, 27 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E6%88%91%E7%9A%84%E5%A4%A7%E6%A8%A1%E5%9E%8B%E4%BD%BF%E7%94%A8%E6%96%B9%E6%A1%88/</guid><description>在比较高阶深入的场景，我们需要用到 GTP-4 或者 claude-3-opus 这类第一梯队的大模型，这种一般只能采用付费方案。在大部分场景用免费的就行了。下面介绍下我使用的这两</description><content type="html"><![CDATA[<p>在比较高阶深入的场景，我们需要用到 GTP-4 或者 claude-3-opus 这类第一梯队的大模型，这种一般只能采用付费方案。在大部分场景用免费的就行了。下面介绍下我使用的这两种方案。</p>
-<h2 id="付费方案">付费方案</h2>
-<p>付费我使用的是 <a href="https://openrouter.ai/">openrouter</a>  + <a href="https://github.com/chathub-dev/chathub">chathub</a>，缺点是没法传附件，其中：</p>
-<ul>
-<li><a href="https://openrouter.ai/">openrouter</a> 是一个代理，它支持上百种大模型，按需付费使用，丰俭由人，支持银联银行卡支付。</li>
-<li><a href="https://github.com/chathub-dev/chathub">chathub</a> 是前端交互对话界面，因为 openrouter 自带的前端对话界面不太好用。</li>
-</ul>
-<h3 id="openrouter-注册与充值">openrouter 注册与充值</h3>
-<p><a href="https://openrouter.ai/">OpenRouter</a> 注册后，使用银联信用卡<a href="https://openrouter.ai/account#credits">充值</a>，最低 5 刀。充值完后你就可以用了，就可以使用他自己的 <a href="https://openrouter.ai/playground">UI</a> 进行大模型对话。但是他自带的 UI 不是很好用，提供了 <a href="https://openrouter.ai/docs#quick-start">API</a> 的方式，也比较简单，如果你会前端，可以自己造个轮子，我这里使用 chathub。</p>
-<h3 id="进阶---使用-chathub-做前端">进阶 - 使用 chathub 做前端</h3>
-<p><a href="https://github.com/chathub-dev/chathub">chathub</a> 是一个优秀的开源项目，支持多种模型，支持配置 openroute api 的方式，但是目前的最新版已经是付费使用了，所以我找到旧版本重新编译。这个版本自带了 openrouter gpt-4 的 api 访问，基本够用了。<em>我这里稍微修改了下源码，增加了 claude-3-opus 和 openai/gpt-4-turbo-preview 模型。</em></p>
-<p><strong>编译流程（mac 为例）</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e"># 环境准备</span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e"># 安装 node.js</span>
-</span></span><span style="display:flex;"><span>brew install node
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e"># 下载 chathub 源码</span>
-</span></span><span style="display:flex;"><span>git clone git@github.com:chathub-dev/chathub.git
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e"># 编译，可以参考项目 readme</span>
-</span></span><span style="display:flex;"><span>cd chathub
-</span></span><span style="display:flex;"><span>git checkout v1.44.2
-</span></span><span style="display:flex;"><span>yarn install
-</span></span><span style="display:flex;"><span>yarn build
-</span></span></code></pre></div><p><strong>导入 chrome</strong>
-编译后生成 dist 目录，打开 chrome 插件页面，打开开发者模式，把 dist 文件夹拖进去即可。</p>
-<p><strong>配置 chathub 的 openrouter api 与模型</strong></p>
-<ul>
-<li>首先在 openrouter 里面创建一个 key</li>
-<li>然后在 chathub 设置页面填入 key 以及 gpt 模型</li>
-</ul>
-<p><img alt="image.png" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/20240327180536.png"></p>
-<h2 id="免费方案">免费方案</h2>
-<p><a href="https://claude.ai/">https://claude.ai/</a><br>
-用 google 账号注册一个</p>
-<p><a href="https://gemini.google.com/app">https://gemini.google.com/app</a>
-google 的，也很强，够用，可以上传附件</p>
-<p><a href="https://poe.com">https://poe.com</a>
-gpt3.5 免费</p>
 ]]></content></item><item><title>重新开始跑步</title><link>https://yaofun.top/posts/2024/03/%E9%87%8D%E6%96%B0%E5%BC%80%E5%A7%8B%E8%B7%91%E6%AD%A5/</link><pubDate>Fri, 22 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E9%87%8D%E6%96%B0%E5%BC%80%E5%A7%8B%E8%B7%91%E6%AD%A5/</guid><description>跑步分泌的多巴胺仅次于谈恋爱，三公里专治各种不爽，五公里专治各种内伤，十公里跑完内心全是坦荡和善良。 跑圈盛传的一句话，没跑过的觉得是玩笑，跑</description><content type="html"><![CDATA[<p><img alt="2024.3.25 早起 - 在成都遥望雪山" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/20240325172820.png"></p>
 <blockquote>
 <p>跑步分泌的多巴胺仅次于谈恋爱，三公里专治各种不爽，五公里专治各种内伤，十公里跑完内心全是坦荡和善良。</p>
@@ -335,7 +335,7 @@ picgo 配置自定义域名，例如我的是：https://cdn.jsdelivr.net/gh/goby
 ]]></content></item><item><title>看了一部电影《白日梦想家》</title><link>https://yaofun.top/posts/2024/03/%E7%9C%8B%E4%BA%86%E4%B8%80%E9%83%A8%E7%94%B5%E5%BD%B1%E7%99%BD%E6%97%A5%E6%A2%A6%E6%83%B3%E5%AE%B6/</link><pubDate>Sat, 16 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E7%9C%8B%E4%BA%86%E4%B8%80%E9%83%A8%E7%94%B5%E5%BD%B1%E7%99%BD%E6%97%A5%E6%A2%A6%E6%83%B3%E5%AE%B6/</guid><description>真的是好久没看电影了，最近一段时间，长时间的压力，焦虑，导致在跟娃相处过程中情绪不稳定，吼完他后悔万分。 周末看了部电影《白日梦想家》。主题是</description><content type="html"><![CDATA[<p>真的是好久没看电影了，最近一段时间，长时间的压力，焦虑，导致在跟娃相处过程中情绪不稳定，吼完他后悔万分。</p>
 <p>周末看了部电影《白日梦想家》。主题是：勇敢行动起来，改变生活。本身就是实现梦想，和结果无关。走过，经历过，就是意义。看了一些影评，有些触动。<a href="https://movie.douban.com/review/6482906/">迟来的成人礼-二是因为缺爱（白日梦想家）影评</a>，联想到自己决定开始跑步，又迟迟没有开始行动，有些羞愧。</p>
 <p>刚上大学那阵看的电影《千与千寻》以及里面的一篇影评影响我很久 <a href="https://movie.douban.com/review/1050852/?start=0#comments">你我都曾有过的梦境（千与千寻）影评</a></p>
-<p>回到电影，回顾从我记事起几件勇敢行动的事：</p>
+<p>所以有时候看看电影挺好的，还得看好电影，回到这个电影的话题，我回顾了下，从我记事起几件勇敢行动的事：</p>
 <blockquote>
 <p>小时候在爸妈的一次争吵中勇敢发声。</p>
 </blockquote>
@@ -355,6 +355,14 @@ picgo 配置自定义域名，例如我的是：https://cdn.jsdelivr.net/gh/goby
 <p>34 岁，一个人自驾四姑娘山，晚上睡车里，第二天徒步长坪沟全段，走了 4 万多步，途中看到美丽的风景，与内心对话。</p>
 </blockquote>
 <p><img alt="Pasted image 20240318163311" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/Pasted%20image%2020240318163311.png"></p>
+<p>憧憬未来，我希望我还能：</p>
+<ul>
+<li><input disabled="" type="checkbox"> 开始健康生活</li>
+<li><input disabled="" type="checkbox"> 完成一次半马马拉松，拿到奖牌</li>
+<li><input disabled="" type="checkbox"> 登一次雪山</li>
+<li><input disabled="" type="checkbox"> 成为开源项目 commiter</li>
+<li><input disabled="" type="checkbox"> 写一个有影响力的开源项目</li>
+</ul>
 ]]></content></item><item><title>测试图文混排</title><link>https://yaofun.top/posts/2024/02/%E6%B5%8B%E8%AF%95%E5%9B%BE%E6%96%87%E6%B7%B7%E6%8E%92/</link><pubDate>Tue, 20 Feb 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/02/%E6%B5%8B%E8%AF%95%E5%9B%BE%E6%96%87%E6%B7%B7%E6%8E%92/</guid><description>测试一下图文混排 来一个2并联 你好 再来 分割线</description><content type="html"><![CDATA[<p>测试一下图文混排</p>
 <h2 id="来一个2并联">来一个2并联</h2>
 <p><img src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/IMG_0226.jpeg">
@@ -557,8 +565,8 @@ day 1: 2023.2.3 ： 成都 -&gt; 恩施 648 KM</p>
 <h3 id="当地人的晚餐邀请---新的旅行体验">当地人的晚餐邀请 - 新的旅行体验</h3>
 <p>来都来了，总要去湖边转转吧，玩的差不多了，我们收拾了下，趁着天气不错，太阳已经完全露出，蓝天白云，天气时分透亮，准备去湖边随便转转，也不想去什么热门景点，就顺时针往前方开，哪里人少可以到湖边就停。终于找到一个点下去，车停在一片树荫下面，果仔在湖边玩水，摸鱼，我和小雨在旁边散步，拍照。</p>
 <p><img alt="8AE75AF2-D1C4-41E4-9C4F-D34132F79F49_1_105_c.jpeg" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/8AE75AF2-D1C4-41E4-9C4F-D34132F79F49_1_105_c.jpeg">
-<img alt="BC9B8BDB-1768-4940-8A1F-C51D63957F87_1_105_c.jpeg" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/BC9B8BDB-1768-4940-8A1F-C51D63957F87_1_105_c.jpeg">
-<img alt="0ECA457E-0698-43EA-BA54-8FF04C53EFFB_1_105_c.jpeg" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/0ECA457E-0698-43EA-BA54-8FF04C53EFFB_1_105_c.jpeg"></p>
+<img alt="BC9B8BDB-1768-4940-8A1F-C51D63957F87_1_105_c.jpeg" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/BC9B8BDB-1768-4940-8A1F-C51D63957F87_1_105_c.jpeg"></p>
+<p><img alt="0ECA457E-0698-43EA-BA54-8FF04C53EFFB_1_105_c.jpeg" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/0ECA457E-0698-43EA-BA54-8FF04C53EFFB_1_105_c.jpeg"></p>
 <p>玩到 5 点半的时候，意外的接到民宿女主人的电话，邀请我们在他们那吃晚餐，一起过节，说她们买了一条大鱼，邀请我们过去吃，免得我们在外面也不知道吃什么也不好找。刚开始有点犹豫准备拒绝，因为第一不好意思，第二还想看看日落和晚霞。但是想着这何尝不是一种特殊的旅行体验呢，到时候还可以和当地人一起聊聊天也挺好的，让果仔也可以多一种社交体验。我竟然勇敢的答应了，最终还是庆幸自己去了，女主人人真的是很友好，真的是旅途中一种独特而美好的体验。</p>
 <p>一起晚餐的除了我们一家三口，还有女主人，民宿的阿姨，厨师，还有住我们隔壁房间的一家三口。除了我们几个是外地人，他们都是昆明人。晚餐是民宿请的厨师做的一桌云南菜，菜出乎意外的都很好吃，铜锅炖鱼，鱼肉鱼汤鲜美，一点不腥。洋芋饭也是一绝。饭间跟他们一起聊天挺开心的，感受到云南人的热情和友善。</p>
 <p><img alt="8625E520-67BB-4A2C-A08E-FE38624A0605_1_105_c.jpeg" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/8625E520-67BB-4A2C-A08E-FE38624A0605_1_105_c.jpeg"></p>
@@ -648,7 +656,7 @@ day 1: 2023.2.3 ： 成都 -&gt; 恩施 648 KM</p>
 身体很重要，很重要！
 小城市有小城市的美，生活气息，美食，人情味儿。
 云南很美，彩云之南，名不虚传，下次还去</p>
-]]></content></item><item><title>独自徒步四姑娘山长坪沟</title><link>https://yaofun.top/posts/2023/08/%E7%8B%AC%E8%87%AA%E5%BE%92%E6%AD%A5%E5%9B%9B%E5%A7%91%E5%A8%98%E5%B1%B1%E9%95%BF%E5%9D%AA%E6%B2%9F/</link><pubDate>Sat, 05 Aug 2023 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2023/08/%E7%8B%AC%E8%87%AA%E5%BE%92%E6%AD%A5%E5%9B%9B%E5%A7%91%E5%A8%98%E5%B1%B1%E9%95%BF%E5%9D%AA%E6%B2%9F/</guid><description>时间线 Day 1 - 2023.08.05 你好 6:00 起床，早餐，洗漱 6:30 从家里出发 9:30 抵达巴朗山 21:00 车上过夜：四姑娘山斯古拉文旅城（免费停车，干净，还有厕所 Day 2 - 2023.08.06 去程 08:00 到达景区</description><content type="html"><![CDATA[<p><img alt="自拍一张" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/IMG_0365.jpeg"></p>
+]]></content></item><item><title>2023 独自徒步四姑娘山长坪沟</title><link>https://yaofun.top/posts/2023/08/2023-%E7%8B%AC%E8%87%AA%E5%BE%92%E6%AD%A5%E5%9B%9B%E5%A7%91%E5%A8%98%E5%B1%B1%E9%95%BF%E5%9D%AA%E6%B2%9F/</link><pubDate>Sat, 05 Aug 2023 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2023/08/2023-%E7%8B%AC%E8%87%AA%E5%BE%92%E6%AD%A5%E5%9B%9B%E5%A7%91%E5%A8%98%E5%B1%B1%E9%95%BF%E5%9D%AA%E6%B2%9F/</guid><description>时间线 Day 1 - 2023.08.05 你好 6:00 起床，早餐，洗漱 6:30 从家里出发 9:30 抵达巴朗山 21:00 车上过夜：四姑娘山斯古拉文旅城（免费停车，干净，还有厕所 Day 2 - 2023.08.06 去程 08:00 到达景区</description><content type="html"><![CDATA[<p><img alt="自拍一张" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/IMG_0365.jpeg"></p>
 <h2 id="时间线">时间线</h2>
 <h3 id="day-1---20230805">Day 1 - 2023.08.05</h3>
 <p><img src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/IMG_0226.jpeg">
