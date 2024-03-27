@@ -1,6 +1,6 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Posts on 蓝色大树🌲</title><link>https://yaofun.top/posts/</link><description>Recent content in Posts on 蓝色大树🌲</description><generator>Hugo -- gohugo.io</generator><language>en</language><copyright>&lt;a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0&lt;/a></copyright><lastBuildDate>Wed, 27 Mar 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://yaofun.top/posts/index.xml" rel="self" type="application/rss+xml"/><item><title>与 AI 对话 - 聊聊人生焦虑</title><link>https://yaofun.top/posts/2024/03/%E4%B8%8E-ai-%E5%AF%B9%E8%AF%9D-%E8%81%8A%E8%81%8A%E4%BA%BA%E7%94%9F%E7%84%A6%E8%99%91/</link><pubDate>Wed, 27 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E4%B8%8E-ai-%E5%AF%B9%E8%AF%9D-%E8%81%8A%E8%81%8A%E4%BA%BA%E7%94%9F%E7%84%A6%E8%99%91/</guid><description>我觉得我正在经历人生中最严重的焦虑之一，总感觉心里有点不舒服，经常反刍后悔自己的决定。 为了缓解焦虑，我尝试做了一些改变，之前提到的开始跑步：</description><content type="html"><![CDATA[<p><img alt="IMG_3820.jpeg" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/IMG_3820.jpeg"></p>
 <p>我觉得我正在经历人生中最严重的焦虑之一，总感觉心里有点不舒服，经常反刍后悔自己的决定。</p>
-<p>为了缓解焦虑，我尝试做了一些改变，之前提到的开始跑步：<a href="https://yaofun.top/posts/2024/03/%E9%87%8D%E6%96%B0%E5%BC%80%E5%A7%8B%E8%B7%91%E6%AD%A5/">重新开始跑步 :: 蓝色大树🌲</a>，也重新开始阅读书籍。刚读完了《非暴力沟通》，也有收获。</p>
+<p>为了缓解焦虑，我尝试做了一些改变，之前提到的开始跑步：<a href="https://yaofun.top/posts/2024/03/%E9%87%8D%E6%96%B0%E5%BC%80%E5%A7%8B%E8%B7%91%E6%AD%A5/">重新开始跑步 :: 蓝色大树🌲</a>，也重新开始阅读书籍。刚读完了《非暴力沟通》，也有一些收获。</p>
 <p>此外，还想跟 AI 聊聊，解开心结，为了更有效的提问交流，我需要把问题描述清楚并「写到纸上」，写的过程其实也是一种自我认识的过程。</p>
 <p>整个对话下来，AI 的分析还是很厉害，有所收获，也有被开导到，整个 token 花费大概 6 块钱（人民币）。以下是我的问题与 prompt （AI 模型：claude-3-opus）</p>
 <h2 id="与-ai-对话">与 AI 对话</h2>
@@ -107,6 +107,46 @@
 <li>活动一下身体,舒展筋骨。</li>
 <li>花1-2分钟反思这次冥想的体验。</li>
 </ol>
+]]></content></item><item><title>我的大模型使用方案</title><link>https://yaofun.top/posts/2024/03/%E6%88%91%E7%9A%84%E5%A4%A7%E6%A8%A1%E5%9E%8B%E4%BD%BF%E7%94%A8%E6%96%B9%E6%A1%88/</link><pubDate>Wed, 27 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E6%88%91%E7%9A%84%E5%A4%A7%E6%A8%A1%E5%9E%8B%E4%BD%BF%E7%94%A8%E6%96%B9%E6%A1%88/</guid><description>在比较高阶深入的场景，我们需要用到 GTP-4 或者 claude-3-opus 这类第一梯队的大模型，这种一般只能采用付费方案。在大部分场景用免费的就行了。下面介绍下我使用的这两</description><content type="html"><![CDATA[<p>在比较高阶深入的场景，我们需要用到 GTP-4 或者 claude-3-opus 这类第一梯队的大模型，这种一般只能采用付费方案。在大部分场景用免费的就行了。下面介绍下我使用的这两种方案。</p>
+<h2 id="1-付费方案">1 付费方案</h2>
+<p>付费我使用的是 <a href="https://openrouter.ai/">openrouter</a>  + <a href="https://github.com/chathub-dev/chathub">chathub</a>，其中：</p>
+<ul>
+<li><a href="https://openrouter.ai/">openrouter</a> 是一个代理，它支持上百种大模型，按需付费使用，丰俭由人，支持银联银行卡支付。</li>
+<li><a href="https://github.com/chathub-dev/chathub">chathub</a> 是前端交互对话界面，因为 openrouter 自带的前端对话界面不太好用。</li>
+</ul>
+<h3 id="11-openrouterai-注册与充值">1.1 openrouter.ai 注册与充值</h3>
+<p><a href="https://openrouter.ai/">OpenRouter</a> 注册后，使用银联信用卡<a href="https://openrouter.ai/account#credits">充值</a>，最低 5 刀。充值完后你就可以用了，可以使用他自己的 <a href="https://openrouter.ai/playground">UI</a> 进行大模型对话。</p>
+<h3 id="12--进阶---使用-chathub-做前端">1.2  进阶 - 使用 chathub 做前端</h3>
+<p><a href="https://github.com/chathub-dev/chathub">chathub</a> 是一个优秀的开源项目，支持多种模型，支持配置 openroute api 的方式，但是目前的最新版已经是付费使用了，所以我找到旧版本重新编译。</p>
+<p><strong>编译流程（mac 为例）</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 环境准备</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 安装 node.js</span>
+</span></span><span style="display:flex;"><span>brew install node
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 下载 chathub 源码</span>
+</span></span><span style="display:flex;"><span>git clone git@github.com:chathub-dev/chathub.git
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 编译，可以参考项目 readme</span>
+</span></span><span style="display:flex;"><span>cd chathub
+</span></span><span style="display:flex;"><span>git checkout v1.44.2
+</span></span><span style="display:flex;"><span>yarn install
+</span></span><span style="display:flex;"><span>yarn build
+</span></span></code></pre></div><p><strong>导入 chrome</strong>
+编译后生成 dist 目录，打开 chrome 插件页面，打开开发者模式，把 dist 文件夹拖进去即可。</p>
+<p><strong>配置 openrouter api 与模型</strong></p>
+<ul>
+<li>首先在 openroute 里面创建一个 key</li>
+<li>然后在 chathub 设置页面填入 key 以及 gpt 模型</li>
+</ul>
+<p><img alt="image.png" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/20240327180536.png"></p>
+<h2 id="免费方案">免费方案</h2>
+<p><a href="https://claude.ai/">https://claude.ai/</a><br>
+用 google 账号注册一个</p>
+<p><a href="https://gemini.google.com/app">https://gemini.google.com/app</a>
+google 的，也很强，够用，可以上传附件</p>
+<p><a href="https://poe.com">https://poe.com</a>
+gpt3.5 免费</p>
 ]]></content></item><item><title>重新开始跑步</title><link>https://yaofun.top/posts/2024/03/%E9%87%8D%E6%96%B0%E5%BC%80%E5%A7%8B%E8%B7%91%E6%AD%A5/</link><pubDate>Fri, 22 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E9%87%8D%E6%96%B0%E5%BC%80%E5%A7%8B%E8%B7%91%E6%AD%A5/</guid><description>跑步分泌的多巴胺仅次于谈恋爱，三公里专治各种不爽，五公里专治各种内伤，十公里跑完内心全是坦荡和善良。 跑圈盛传的一句话，没跑过的觉得是玩笑，跑</description><content type="html"><![CDATA[<p><img alt="2024.3.25 早起 - 在成都遥望雪山" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/20240325172820.png"></p>
 <blockquote>
 <p>跑步分泌的多巴胺仅次于谈恋爱，三公里专治各种不爽，五公里专治各种内伤，十公里跑完内心全是坦荡和善良。</p>
@@ -573,4 +613,4 @@ apple watch （记录运动，指南针）</p>
 <p>你可能比你想象中更厉害，20+KM 高海拔徒步，之前是不敢想的。
 尝试改变，不改变，又是对自己日复一日的重复，躺在家里耍手机一天就过了。
 通过长距离徒步，亲近大自然，与朋友分享，获取自我认同，收获人生经历。</p>
-]]></content></item></channel></rss>
+]]></content></item><item><title/><link>https://yaofun.top/posts/1/01/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/1/01/</guid><description/><content type="html"></content></item></channel></rss>
