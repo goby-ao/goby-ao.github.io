@@ -10,14 +10,14 @@
 <h3 id="进阶---使用-chathub-做前端">进阶 - 使用 chathub 做前端</h3>
 <p><a href="https://github.com/chathub-dev/chathub">chathub</a> 是一个优秀的开源项目，支持多种模型，支持配置 openroute api 的方式，但是目前的最新版已经是付费使用了，所以我找到旧版本重新编译。这个版本自带了 openrouter gpt-4 的 api 访问，基本够用了。<em>我这里稍微修改了下源码，增加了 claude-3-opus 和 openai/gpt-4-turbo-preview 模型。</em></p>
 <p><strong>编译流程（mac 为例）</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e"># 环境准备</span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e"># 安装 node.js</span>
+<div class="highlight"><pre tabindex="0" style="color:#e6edf3;background-color:#0d1117;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#8b949e;font-style:italic"># 环境准备</span>
+</span></span><span style="display:flex;"><span><span style="color:#8b949e;font-style:italic"># 安装 node.js</span>
 </span></span><span style="display:flex;"><span>brew install node
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e"># 下载 chathub 源码</span>
+</span></span><span style="display:flex;"><span><span style="color:#8b949e;font-style:italic"># 下载 chathub 源码</span>
 </span></span><span style="display:flex;"><span>git clone git@github.com:chathub-dev/chathub.git
 </span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e"># 编译，可以参考项目 readme</span>
+</span></span><span style="display:flex;"><span><span style="color:#8b949e;font-style:italic"># 编译，可以参考项目 readme</span>
 </span></span><span style="display:flex;"><span>cd chathub
 </span></span><span style="display:flex;"><span>git checkout v1.44.2
 </span></span><span style="display:flex;"><span>yarn install
@@ -72,7 +72,7 @@ gpt3.5 免费</p>
 <p>整个对话下来，AI 的分析还是很厉害，有所收获，也有被开导到，整个 token 花费大概 6 块钱（人民币）。以下是我的问题与 prompt （AI 模型：claude-3-opus）</p>
 <h2 id="与-ai-对话">与 AI 对话</h2>
 <hr>
-<p>**Q：你对人生哲学与心理学的理解很深入，你有大师级别的领悟能力，对事情的本质看的很透彻。我的情况如下，请帮忙分析并开导我：</p>
+<p><strong>Q：你对人生哲学与心理学的理解很深入，你有大师级别的领悟能力，对事情的本质看的很透彻。我的情况如下，请帮忙分析并开导我：</strong></p>
 <p>我当前有一套房子正在住，小区环境优美，也住习惯了。</p>
 <p>前段时间为了小朋友上一个稍微好点的学校，我又买了一个二手房，房子有点小，而且小区环境也没现在这个好，花了 201 多万，首付掏空了所有积蓄，还贷款了 139 万。</p>
 <p>经济来源就我一个人，妻子没有上班。现在每个月 6000 多的月供还款金额，我的公积金刚好能够覆盖。</p>
@@ -122,8 +122,8 @@ gpt3.5 免费</p>
 <p>这些问题其实都是很多人面临的共性问题,不必讳言或自责。关键是意识到自己的特点和局限,并积极寻求改变的方法。比如试着放慢节奏,给自己一些喘息的时间;学会把大问题分解成小目标,一步步来应对;多与他人沟通,学会换位思考;培养一些能让心灵平静的爱好;必要时寻求心理咨询的帮助等。</p>
 <p>相信只要你肯努力,就一定能让内心变得更加强大和豁达。每个人的人生都是一个不断自我发现、自我突破的过程,你现在所经历的,正是通往成熟和智慧的必由之路。保持希望,勇敢前行,我相信你一定会创造出一个更好的自己和生活。</p>
 <p><strong>Q：我发现我纠结的本质是钱的流失，是生活的环境品质的下降。请开导我</strong></p>
-<p><strong>A：from claude-3-opus ：</strong>
-我完全理解你对财务状况和生活品质下降的担忧。这是一种非常普遍和真实的焦虑,特别是在当今快节奏、高压力的社会中。但我想请你试着换一个角度来看待这个问题。</p>
+<p><strong>A：from claude-3-opus ：</strong></p>
+<p>我完全理解你对财务状况和生活品质下降的担忧。这是一种非常普遍和真实的焦虑,特别是在当今快节奏、高压力的社会中。但我想请你试着换一个角度来看待这个问题。</p>
 <p>首先,金钱和物质环境固然重要,但它们并不是衡量生活品质的全部。真正的幸福和满足感来自于内心的平静、人际关系的和谐、自我价值的实现等。有时,我们过于关注外在的物质条件,却忽视了内在的精神需求。不妨问问自己,什么是你生命中最重要的东西?是家人的陪伴,还是内心的平和?当你找到了人生的意义和方向,很多烦恼也就不那么重要了。</p>
 <p>其次,生活的起起伏伏是不可避免的。我们不可能永远处于巅峰状态,也难免会遇到一些困难和挫折。关键是如何去面对和应对。每一次的挑战,都是我们成长和进步的机会。也许现在的你正处于人生的低谷期,但只要你不放弃希望,继续努力,终会迎来新的转机。历史上无数成功的人士都曾经历过重大的失败和困境,但他们凭借坚韧不拔的意志,最终创造了辉煌。相信自己有这样的潜力和毅力。</p>
 <p>再次,过度纠结于已经发生的事情并无助益。与其沉溺于&quot;如果当时&quot;的悔恨,不如把目光投向未来,思考如何在现有的基础上前行。你还年轻,还有大把的时间和机会去重建自己的生活。也许目前的工作不太如意,那就尝试提升自己的技能,寻找新的发展方向;也许目前的居住环境不够理想,但你可以想办法去改善和美化它,或者把它当作一个暂时的跳板,为将来更好的生活而打拼。</p>
@@ -265,15 +265,15 @@ gpt3.5 免费</p>
 <h3 id="1-本地初始化-hugo-博客">1 本地初始化 hugo 博客</h3>
 <p><strong>1.1 hugo 安装</strong></p>
 <p>windows 上安装 hugo 需要先安装 go，在 macOS 上安装 hugo 比较简单可以自动安装所需依赖。</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>brew update
+<div class="highlight"><pre tabindex="0" style="color:#e6edf3;background-color:#0d1117;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>brew update
 </span></span><span style="display:flex;"><span>brew install hugo
 </span></span></code></pre></div><p><strong>1.2 hugo 博客初始化</strong></p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>hugo new site yaofun.top
+<div class="highlight"><pre tabindex="0" style="color:#e6edf3;background-color:#0d1117;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>hugo new site yaofun.top
 </span></span></code></pre></div><p>例如 /home/yao/blog 下执行命令，会
 生成 yaofun.top 子目录： /home/yao/blog/yaofun.top</p>
 <p><strong>1.3 安装 hugo 主题</strong></p>
 <p>我安装的是 hello-friend-ng 主题：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>$ git submodule add https://github.com/rhazdon/hugo-theme-hello-friend-ng.git themes/hello-friend-ng
+<div class="highlight"><pre tabindex="0" style="color:#e6edf3;background-color:#0d1117;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>$ git submodule add https://github.com/rhazdon/hugo-theme-hello-friend-ng.git themes/hello-friend-ng
 </span></span></code></pre></div><p><strong>1.4 本地运行与调试</strong></p>
 <p>拷贝 theme 下的 exmapleSite 下的 content 目录和 .toml 配置到 hugo 根目录（/home/yao/blog/yaofun.top）</p>
 <p>执行 hugo server 即可用 http://localhost:1313 查看预览效果，修改静态代码后它会自动重新编译构建。</p>
@@ -320,24 +320,24 @@ picgo 配置自定义域名，例如我的是：https://cdn.jsdelivr.net/gh/goby
 <li>安装 obsidian 插件 <em>Image Auto Upload</em>：实现贴图自动上传图床，生成链接</li>
 <li>安装 obsidian 插件 <em>Templater</em> ：配置博客模板 header</li>
 </ol>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yml" data-lang="yml"><span style="display:flex;"><span>---
-</span></span><span style="display:flex;"><span><span style="color:#f92672">date</span>: <span style="color:#ae81ff">&lt;% tp.file.creation_date(&#34;YYYY-MM-DD&#34;) %&gt;</span>
-</span></span><span style="display:flex;"><span><span style="color:#f92672">title</span>: <span style="color:#ae81ff">&lt;% tp.file.title %&gt;</span>
-</span></span><span style="display:flex;"><span><span style="color:#f92672">tags</span>: [<span style="color:#e6db74">&#39;&lt;% tp.system.suggester(item =&gt; item, Object.keys(app.metadataCache.getTags()).map(x =&gt; x.replace(&#34;#&#34;, &#34;&#34;))) %&gt;&#39;</span>]
-</span></span><span style="display:flex;"><span>---
-</span></span></code></pre></div><ol start="5">
+<div class="highlight"><pre tabindex="0" style="color:#e6edf3;background-color:#0d1117;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yml" data-lang="yml"><span style="display:flex;"><span><span style="color:#ff7b72">---</span><span style="color:#6e7681">
+</span></span></span><span style="display:flex;"><span><span style="color:#6e7681"></span><span style="color:#7ee787">date</span>:<span style="color:#6e7681"> </span><span style="color:#a5d6ff">&lt;% tp.file.creation_date(&#34;YYYY-MM-DD&#34;) %&gt;</span><span style="color:#6e7681">
+</span></span></span><span style="display:flex;"><span><span style="color:#6e7681"></span><span style="color:#7ee787">title</span>:<span style="color:#6e7681"> </span><span style="color:#a5d6ff">&lt;% tp.file.title %&gt;</span><span style="color:#6e7681">
+</span></span></span><span style="display:flex;"><span><span style="color:#6e7681"></span><span style="color:#7ee787">tags</span>:<span style="color:#6e7681"> </span>[<span style="color:#a5d6ff">&#39;&lt;% tp.system.suggester(item =&gt; item, Object.keys(app.metadataCache.getTags()).map(x =&gt; x.replace(&#34;#&#34;, &#34;&#34;))) %&gt;&#39;</span>]<span style="color:#6e7681">
+</span></span></span><span style="display:flex;"><span><span style="color:#6e7681"></span><span style="color:#ff7b72">---</span><span style="color:#6e7681">
+</span></span></span></code></pre></div><ol start="5">
 <li>安装 obsidian 插件 <em>quickadd</em> ：更便捷的创建博客文件</li>
 </ol>
 <h3 id="5-折腾美化">5 折腾美化</h3>
 <p><strong>5.1 图片排版</strong></p>
 <p>参考：<a href="https://immmmm.com/about-images-gird/">Hugo 多图排版这样来：：木木木木木</a> 在 <code>themes/hello-friend-ng/assets/scss/_single.scss </code> 里面加入以下 css 代码：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-css" data-lang="css"><span style="display:flex;"><span>.<span style="color:#a6e22e">post-content</span> <span style="color:#f92672">p</span>:<span style="color:#a6e22e">has</span><span style="color:#f92672">(&gt;</span> <span style="color:#f92672">img</span>:<span style="color:#a6e22e">nth-child</span><span style="color:#f92672">(</span><span style="color:#f92672">2</span><span style="color:#f92672">))</span>{<span style="color:#66d9ef">column-count</span>:<span style="color:#ae81ff">2</span>;<span style="color:#66d9ef">column-gap</span>:<span style="color:#ae81ff">8</span><span style="color:#66d9ef">px</span>;<span style="color:#66d9ef">margin</span>:<span style="color:#ae81ff">6</span><span style="color:#66d9ef">px</span> <span style="color:#ae81ff">0</span>;}
-</span></span><span style="display:flex;"><span>.<span style="color:#a6e22e">post-content</span> <span style="color:#f92672">p</span>:<span style="color:#a6e22e">has</span><span style="color:#f92672">(&gt;</span> <span style="color:#f92672">img</span>:<span style="color:#a6e22e">nth-child</span><span style="color:#f92672">(</span><span style="color:#f92672">3</span><span style="color:#f92672">))</span>{<span style="color:#66d9ef">column-count</span>:<span style="color:#ae81ff">3</span>;}
-</span></span><span style="display:flex;"><span>.<span style="color:#a6e22e">post-content</span> <span style="color:#f92672">p</span>:<span style="color:#a6e22e">has</span><span style="color:#f92672">(&gt;</span> <span style="color:#f92672">img</span>:<span style="color:#a6e22e">nth-child</span><span style="color:#f92672">(</span><span style="color:#f92672">4</span><span style="color:#f92672">))</span>{<span style="color:#66d9ef">column-count</span>:<span style="color:#ae81ff">4</span>;}
-</span></span><span style="display:flex;"><span>.<span style="color:#a6e22e">post-content</span> <span style="color:#f92672">p</span>:<span style="color:#a6e22e">has</span><span style="color:#f92672">(&gt;</span> <span style="color:#f92672">img</span>:<span style="color:#a6e22e">nth-child</span><span style="color:#f92672">(</span><span style="color:#f92672">5</span><span style="color:#f92672">))</span>{<span style="color:#66d9ef">column-count</span>:<span style="color:#ae81ff">5</span>;}
-</span></span><span style="display:flex;"><span>.<span style="color:#a6e22e">post-content</span> <span style="color:#f92672">p</span>:<span style="color:#a6e22e">has</span><span style="color:#f92672">(&gt;</span> <span style="color:#f92672">img</span>:<span style="color:#a6e22e">nth-child</span><span style="color:#f92672">(</span><span style="color:#f92672">6</span><span style="color:#f92672">))</span>{<span style="color:#66d9ef">column-count</span>:<span style="color:#ae81ff">4</span>;}
-</span></span><span style="display:flex;"><span>.<span style="color:#a6e22e">post-content</span> <span style="color:#f92672">p</span>:<span style="color:#a6e22e">has</span><span style="color:#f92672">(&gt;</span> <span style="color:#f92672">img</span>:<span style="color:#a6e22e">nth-child</span><span style="color:#f92672">(</span><span style="color:#f92672">2</span><span style="color:#f92672">))</span> <span style="color:#f92672">img</span>{<span style="color:#66d9ef">display</span>:<span style="color:#66d9ef">inherit</span>;}
-</span></span><span style="display:flex;"><span>.<span style="color:#a6e22e">post-content</span> <span style="color:#f92672">p</span>:<span style="color:#a6e22e">has</span><span style="color:#f92672">(&gt;</span> <span style="color:#f92672">img</span>:<span style="color:#a6e22e">nth-child</span><span style="color:#f92672">(</span><span style="color:#f92672">6</span><span style="color:#f92672">))</span> <span style="color:#f92672">img</span>{<span style="color:#66d9ef">margin-bottom</span>:<span style="color:#ae81ff">8</span><span style="color:#66d9ef">px</span>;}
+<div class="highlight"><pre tabindex="0" style="color:#e6edf3;background-color:#0d1117;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-css" data-lang="css"><span style="display:flex;"><span>.<span style="color:#f0883e;font-weight:bold">post-content</span> <span style="color:#7ee787">p</span>:<span style="color:#d2a8ff;font-weight:bold">has</span><span style="color:#ff7b72;font-weight:bold">(&gt;</span> <span style="color:#7ee787">img</span>:<span style="color:#d2a8ff;font-weight:bold">nth-child</span><span style="color:#ff7b72;font-weight:bold">(</span><span style="color:#7ee787">2</span><span style="color:#ff7b72;font-weight:bold">))</span>{<span style="color:#ff7b72">column-count</span>:<span style="color:#a5d6ff">2</span>;<span style="color:#ff7b72">column-gap</span>:<span style="color:#a5d6ff">8</span><span style="color:#ff7b72">px</span>;<span style="color:#ff7b72">margin</span>:<span style="color:#a5d6ff">6</span><span style="color:#ff7b72">px</span> <span style="color:#a5d6ff">0</span>;}
+</span></span><span style="display:flex;"><span>.<span style="color:#f0883e;font-weight:bold">post-content</span> <span style="color:#7ee787">p</span>:<span style="color:#d2a8ff;font-weight:bold">has</span><span style="color:#ff7b72;font-weight:bold">(&gt;</span> <span style="color:#7ee787">img</span>:<span style="color:#d2a8ff;font-weight:bold">nth-child</span><span style="color:#ff7b72;font-weight:bold">(</span><span style="color:#7ee787">3</span><span style="color:#ff7b72;font-weight:bold">))</span>{<span style="color:#ff7b72">column-count</span>:<span style="color:#a5d6ff">3</span>;}
+</span></span><span style="display:flex;"><span>.<span style="color:#f0883e;font-weight:bold">post-content</span> <span style="color:#7ee787">p</span>:<span style="color:#d2a8ff;font-weight:bold">has</span><span style="color:#ff7b72;font-weight:bold">(&gt;</span> <span style="color:#7ee787">img</span>:<span style="color:#d2a8ff;font-weight:bold">nth-child</span><span style="color:#ff7b72;font-weight:bold">(</span><span style="color:#7ee787">4</span><span style="color:#ff7b72;font-weight:bold">))</span>{<span style="color:#ff7b72">column-count</span>:<span style="color:#a5d6ff">4</span>;}
+</span></span><span style="display:flex;"><span>.<span style="color:#f0883e;font-weight:bold">post-content</span> <span style="color:#7ee787">p</span>:<span style="color:#d2a8ff;font-weight:bold">has</span><span style="color:#ff7b72;font-weight:bold">(&gt;</span> <span style="color:#7ee787">img</span>:<span style="color:#d2a8ff;font-weight:bold">nth-child</span><span style="color:#ff7b72;font-weight:bold">(</span><span style="color:#7ee787">5</span><span style="color:#ff7b72;font-weight:bold">))</span>{<span style="color:#ff7b72">column-count</span>:<span style="color:#a5d6ff">5</span>;}
+</span></span><span style="display:flex;"><span>.<span style="color:#f0883e;font-weight:bold">post-content</span> <span style="color:#7ee787">p</span>:<span style="color:#d2a8ff;font-weight:bold">has</span><span style="color:#ff7b72;font-weight:bold">(&gt;</span> <span style="color:#7ee787">img</span>:<span style="color:#d2a8ff;font-weight:bold">nth-child</span><span style="color:#ff7b72;font-weight:bold">(</span><span style="color:#7ee787">6</span><span style="color:#ff7b72;font-weight:bold">))</span>{<span style="color:#ff7b72">column-count</span>:<span style="color:#a5d6ff">4</span>;}
+</span></span><span style="display:flex;"><span>.<span style="color:#f0883e;font-weight:bold">post-content</span> <span style="color:#7ee787">p</span>:<span style="color:#d2a8ff;font-weight:bold">has</span><span style="color:#ff7b72;font-weight:bold">(&gt;</span> <span style="color:#7ee787">img</span>:<span style="color:#d2a8ff;font-weight:bold">nth-child</span><span style="color:#ff7b72;font-weight:bold">(</span><span style="color:#7ee787">2</span><span style="color:#ff7b72;font-weight:bold">))</span> <span style="color:#7ee787">img</span>{<span style="color:#ff7b72">display</span>:<span style="color:#79c0ff">inherit</span>;}
+</span></span><span style="display:flex;"><span>.<span style="color:#f0883e;font-weight:bold">post-content</span> <span style="color:#7ee787">p</span>:<span style="color:#d2a8ff;font-weight:bold">has</span><span style="color:#ff7b72;font-weight:bold">(&gt;</span> <span style="color:#7ee787">img</span>:<span style="color:#d2a8ff;font-weight:bold">nth-child</span><span style="color:#ff7b72;font-weight:bold">(</span><span style="color:#7ee787">6</span><span style="color:#ff7b72;font-weight:bold">))</span> <span style="color:#7ee787">img</span>{<span style="color:#ff7b72">margin-bottom</span>:<span style="color:#a5d6ff">8</span><span style="color:#ff7b72">px</span>;}
 </span></span></code></pre></div><p>效果如下：</p>
 <p><img alt="image.png" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/20240325181403.png"></p>
 <p>实际显示：</p>
@@ -349,10 +349,10 @@ picgo 配置自定义域名，例如我的是：https://cdn.jsdelivr.net/gh/goby
 <li>下载 <code>view-image.min.js</code> 到 static/js/ 下</li>
 <li>在 themes/hello-friend-ng/layouts/partials/javascript.html 下加入代码：</li>
 </ol>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-js" data-lang="js"><span style="display:flex;"><span><span style="color:#f92672">&lt;</span><span style="color:#a6e22e">script</span> <span style="color:#a6e22e">src</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;/js/view-image.min.js&#34;</span><span style="color:#f92672">&gt;&lt;</span><span style="color:#960050;background-color:#1e0010">/script&gt;</span>
-</span></span><span style="display:flex;"><span><span style="color:#f92672">&lt;</span><span style="color:#a6e22e">script</span><span style="color:#f92672">&gt;</span>
-</span></span><span style="display:flex;"><span>    window.<span style="color:#a6e22e">ViewImage</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">ViewImage</span>.<span style="color:#a6e22e">init</span>(<span style="color:#e6db74">&#39;.content img&#39;</span>);
-</span></span><span style="display:flex;"><span><span style="color:#f92672">&lt;</span><span style="color:#960050;background-color:#1e0010">/script&gt;</span>
+<div class="highlight"><pre tabindex="0" style="color:#e6edf3;background-color:#0d1117;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-js" data-lang="js"><span style="display:flex;"><span><span style="color:#ff7b72;font-weight:bold">&lt;</span>script src<span style="color:#ff7b72;font-weight:bold">=</span><span style="color:#a5d6ff">&#34;/js/view-image.min.js&#34;</span><span style="color:#ff7b72;font-weight:bold">&gt;&lt;</span><span style="color:#f85149">/script&gt;</span>
+</span></span><span style="display:flex;"><span><span style="color:#ff7b72;font-weight:bold">&lt;</span>script<span style="color:#ff7b72;font-weight:bold">&gt;</span>
+</span></span><span style="display:flex;"><span>    window.ViewImage <span style="color:#ff7b72;font-weight:bold">&amp;&amp;</span> ViewImage.init(<span style="color:#a5d6ff">&#39;.content img&#39;</span>);
+</span></span><span style="display:flex;"><span><span style="color:#ff7b72;font-weight:bold">&lt;</span><span style="color:#f85149">/script&gt;</span>
 </span></span></code></pre></div><h3 id="6-其他问题">6 其他问题</h3>
 <p><strong>中文字数统计不准</strong></p>
 <p>在 hugo.toml 里加入一行：hasCJKLanguage = true</p>
