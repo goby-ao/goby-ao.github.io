@@ -385,7 +385,7 @@ gpt3.5 免费</p>
 </ul>
 <p>参考一些大佬的配置，最终的选型如下：</p>
 <ul>
-<li>Obsidian + git 插件 ：markdown 写作，git 插件自动上传 github</li>
+<li>Obsidian + obsidian git 插件 ：markdown 写作，obsidian git 插件自动上传 github</li>
 <li>Hugo：静态网站构建工具</li>
 <li>Github  + Github Action ：源码托管，自动化编译（<em>emmm，github 应该不会倒闭</em>）</li>
 <li>Cloudflare Page：静态网站托管 （也可以直接用 github page 托管）</li>
