@@ -201,7 +201,7 @@
 <p><img alt="image.png" src="https://cdn.jsdelivr.net/gh/goby-ao/picgo@main/img/20240327180536.png"></p>
 <h2 id="免费方案">免费方案</h2>
 <p><a href="https://coze.com"> coze</a>
-字节开发的，非常强大，有免费的 gpt-4 可以用，目前也是我主要的使用工具，需要科学上网</p>
+字节开发的，非常强大，有免费的 gpt-4 可以用，目前也是我主要的使用工具，需要科学上网。</p>
 <p><a href="https://claude.ai/">https://claude.ai/</a><br>
 用 google 账号注册一个</p>
 <p><a href="https://gemini.google.com/app">https://gemini.google.com/app</a>
@@ -405,7 +405,7 @@ gpt3.5 免费</p>
 <ul>
 <li>简单快捷：使用 Obsidian 写完，一键发布</li>
 <li>稳定靠谱：减少第三方依赖，尽量使用靠谱的第三方服务，例如 github</li>
-<li>图片能够顺畅加载：github 图床国内访问有点难</li>
+<li>图片能够顺畅加载：之前直接使用 github 做图床，国内访问很慢</li>
 </ul>
 <p>参考一些大佬的配置，最终的选型如下：</p>
 <ul>
