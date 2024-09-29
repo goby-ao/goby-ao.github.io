@@ -1,1 +1,52 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>谈谈技术 on 蓝色大树🌲</title><link>https://yaofun.top/tags/%E8%B0%88%E8%B0%88%E6%8A%80%E6%9C%AF/</link><description>Recent content in 谈谈技术 on 蓝色大树🌲</description><generator>Hugo</generator><language>en</language><copyright>&lt;a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0&lt;/a></copyright><lastBuildDate>Wed, 27 Mar 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://yaofun.top/tags/%E8%B0%88%E8%B0%88%E6%8A%80%E6%9C%AF/index.xml" rel="self" type="application/rss+xml"/><item><title>我的大模型使用方案</title><link>https://yaofun.top/posts/2024/03/%E6%88%91%E7%9A%84%E5%A4%A7%E6%A8%A1%E5%9E%8B%E4%BD%BF%E7%94%A8%E6%96%B9%E6%A1%88/</link><pubDate>Wed, 27 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E6%88%91%E7%9A%84%E5%A4%A7%E6%A8%A1%E5%9E%8B%E4%BD%BF%E7%94%A8%E6%96%B9%E6%A1%88/</guid><description>在比较高阶深入的场景，我们需要用到 GTP-4 或者 claude-3-opus 这类第一梯队的大模型，这种一般只能采用付费方案。在大部分场景用免费的就行了。下面介绍下我使用的这两</description></item><item><title>使用 Obsidian 一键发布博客</title><link>https://yaofun.top/posts/2024/03/%E4%BD%BF%E7%94%A8-obsidian-%E4%B8%80%E9%94%AE%E5%8F%91%E5%B8%83%E5%8D%9A%E5%AE%A2/</link><pubDate>Thu, 21 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E4%BD%BF%E7%94%A8-obsidian-%E4%B8%80%E9%94%AE%E5%8F%91%E5%B8%83%E5%8D%9A%E5%AE%A2/</guid><description>种豆南山下，草盛豆苗稀。 晨兴理荒秽，带月荷锄归。 道狭草木长，夕露沾我衣。 衣沾不足惜，但使愿无违。 博客荒废好久了！之前也陆陆续续使用过一些博客</description></item></channel></rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>谈谈技术 on 蓝色大树🌲</title><link>https://yaofun.top/tags/%E8%B0%88%E8%B0%88%E6%8A%80%E6%9C%AF/</link><description>Recent content in 谈谈技术 on 蓝色大树🌲</description><generator>Hugo</generator><language>en</language><copyright>&lt;a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0&lt;/a></copyright><lastBuildDate>Wed, 27 Mar 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://yaofun.top/tags/%E8%B0%88%E8%B0%88%E6%8A%80%E6%9C%AF/index.xml" rel="self" type="application/rss+xml"/><item><title>我的大模型使用方案</title><link>https://yaofun.top/posts/2024/03/%E6%88%91%E7%9A%84%E5%A4%A7%E6%A8%A1%E5%9E%8B%E4%BD%BF%E7%94%A8%E6%96%B9%E6%A1%88/</link><pubDate>Wed, 27 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E6%88%91%E7%9A%84%E5%A4%A7%E6%A8%A1%E5%9E%8B%E4%BD%BF%E7%94%A8%E6%96%B9%E6%A1%88/</guid><description>&lt;p>在比较高阶深入的场景，我们需要用到 GTP-4 或者 claude-3-opus 这类第一梯队的大模型，这种一般只能采用付费方案。在大部分场景用免费的就行了。下面介绍下我使用的这两种方案。&lt;/p>
+&lt;h2 id="付费方案">付费方案&lt;/h2>
+&lt;p>付费我使用的是 &lt;a href="https://openrouter.ai/">openrouter&lt;/a> + &lt;a href="https://github.com/chathub-dev/chathub">chathub&lt;/a>，缺点是没法传附件，其中：&lt;/p>
+&lt;ul>
+&lt;li>&lt;a href="https://openrouter.ai/">openrouter&lt;/a> 是一个代理，它支持上百种大模型，按需付费使用，丰俭由人，支持银联银行卡支付。&lt;/li>
+&lt;li>&lt;a href="https://github.com/chathub-dev/chathub">chathub&lt;/a> 是前端交互对话界面，因为 openrouter 自带的前端对话界面不太好用。&lt;/li>
+&lt;/ul>
+&lt;h3 id="openrouter-注册与充值">openrouter 注册与充值&lt;/h3>
+&lt;p>&lt;a href="https://openrouter.ai/">OpenRouter&lt;/a> 注册后，使用银联信用卡&lt;a href="https://openrouter.ai/account#credits">充值&lt;/a>，最低 5 刀。充值完后你就可以用了，就可以使用他自己的 &lt;a href="https://openrouter.ai/playground">UI&lt;/a> 进行大模型对话。但是他自带的 UI 不是很好用，提供了 &lt;a href="https://openrouter.ai/docs#quick-start">API&lt;/a> 的方式，也比较简单，如果你会前端，可以自己造个轮子，我这里使用 chathub。&lt;/p>
+&lt;h3 id="进阶---使用-chathub-做前端">进阶 - 使用 chathub 做前端&lt;/h3>
+&lt;p>&lt;a href="https://github.com/chathub-dev/chathub">chathub&lt;/a> 是一个优秀的开源项目，支持多种模型，支持配置 openroute api 的方式，但是目前的最新版已经是付费使用了，所以我找到旧版本重新编译。这个版本自带了 openrouter gpt-4 的 api 访问，基本够用了。&lt;em>我这里稍微修改了下源码，增加了 claude-3-opus 和 openai/gpt-4-turbo-preview 模型。&lt;/em>&lt;/p>
+&lt;p>&lt;strong>编译流程（mac 为例）&lt;/strong>&lt;/p>
+&lt;div class="highlight">&lt;pre tabindex="0" style="color:#e6edf3;background-color:#0d1117;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">&lt;code class="language-bash" data-lang="bash">&lt;span style="display:flex;">&lt;span>&lt;span style="color:#8b949e;font-style:italic"># 环境准备&lt;/span>
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#8b949e;font-style:italic"># 安装 node.js&lt;/span>
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>brew install node
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#8b949e;font-style:italic"># 下载 chathub 源码&lt;/span>
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>git clone git@github.com:chathub-dev/chathub.git
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>&lt;span style="color:#8b949e;font-style:italic"># 编译，可以参考项目 readme&lt;/span>
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>cd chathub
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>git checkout v1.44.2
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>yarn install
+&lt;/span>&lt;/span>&lt;span style="display:flex;">&lt;span>yarn build
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;p>&lt;strong>导入 chrome&lt;/strong>
+编译后生成 dist 目录，打开 chrome 插件页面，打开开发者模式，把 dist 文件夹拖进去即可。&lt;/p></description></item><item><title>使用 Obsidian 一键发布博客</title><link>https://yaofun.top/posts/2024/03/%E4%BD%BF%E7%94%A8-obsidian-%E4%B8%80%E9%94%AE%E5%8F%91%E5%B8%83%E5%8D%9A%E5%AE%A2/</link><pubDate>Thu, 21 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E4%BD%BF%E7%94%A8-obsidian-%E4%B8%80%E9%94%AE%E5%8F%91%E5%B8%83%E5%8D%9A%E5%AE%A2/</guid><description>&lt;blockquote>
+&lt;p>种豆南山下，草盛豆苗稀。&lt;br>
+晨兴理荒秽，带月荷锄归。&lt;br>
+道狭草木长，夕露沾我衣。&lt;br>
+衣沾不足惜，但使愿无违。&lt;/p>
+&lt;/blockquote>
+&lt;p>博客荒废好久了！之前也陆陆续续使用过一些博客程序，要么发布部署有些麻烦，要么使用第三方服务不太稳定，一段时间就停止维护了。&lt;/p>
+&lt;p>偶然的机会看到文章： &lt;a href="https://lillianwho.com/posts/obsidian-hugo-cloudflare/">obsidian 配合 hugo、cloudflare：让发布博客简单到不可思议&lt;/a>，心动入坑，花了近一周的时间研究折腾，终于把基于 obsidian 的博客写作与发布工作流搭建起来了，现在可以愉快的一键发布啦。&lt;/p>
+&lt;p>从 0 到 1 折腾踩坑，整个过程好似「&lt;strong>晨兴理荒秽，带月荷锄归&lt;/strong>」，但没有陶渊明那样悠然自得。折腾的心累，年纪再大点肯定折腾不动的，这里首先强烈建议怕麻烦同学的劝退。&lt;/p>
+&lt;h2 id="博客方案">博客方案&lt;/h2>
+&lt;p>折腾前我整理出自己的博客需求如下：&lt;/p>
+&lt;ul>
+&lt;li>简单快捷：使用 Obsidian 写完，一键发布&lt;/li>
+&lt;li>稳定靠谱：减少第三方依赖，尽量使用靠谱的第三方服务，例如 github&lt;/li>
+&lt;li>图片能够顺畅加载：之前直接使用 github 做图床，国内访问很慢&lt;/li>
+&lt;/ul>
+&lt;p>参考一些大佬的配置，最终的选型如下：&lt;/p>
+&lt;ul>
+&lt;li>Obsidian + obsidian git 插件 ：markdown 写作，obsidian git 插件自动上传 github&lt;/li>
+&lt;li>Hugo：静态网站构建工具&lt;/li>
+&lt;li>Github + Github Action ：源码托管，自动化编译（&lt;em>emmm，github 应该不会倒闭&lt;/em>）&lt;/li>
+&lt;li>Cloudflare Page：静态网站托管 （也可以直接用 github page 托管）&lt;/li>
+&lt;li>Picgo + jsdelivr：基于 github 的图床 、cdn 加速&lt;/li>
+&lt;/ul>
+&lt;p>最终达到的效果是：
+在 obsidian 写文章，通过快捷键一件上传到 git 之后，自动构建发布。
+图片在 obsidian 可以自动上传到 github 图床，并且转为 cdn jsdelivr 加速。如下图所示：&lt;/p></description></item></channel></rss>
