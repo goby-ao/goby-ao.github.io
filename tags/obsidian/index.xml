@@ -1,26 +1,26 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Obsidian on 蓝色大树🌲</title><link>https://yaofun.top/tags/obsidian/</link><description>Recent content in Obsidian on 蓝色大树🌲</description><generator>Hugo</generator><language>en</language><copyright>&lt;a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0&lt;/a></copyright><lastBuildDate>Thu, 21 Mar 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://yaofun.top/tags/obsidian/index.xml" rel="self" type="application/rss+xml"/><item><title>使用 Obsidian 一键发布博客</title><link>https://yaofun.top/posts/2024/03/%E4%BD%BF%E7%94%A8-obsidian-%E4%B8%80%E9%94%AE%E5%8F%91%E5%B8%83%E5%8D%9A%E5%AE%A2/</link><pubDate>Thu, 21 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E4%BD%BF%E7%94%A8-obsidian-%E4%B8%80%E9%94%AE%E5%8F%91%E5%B8%83%E5%8D%9A%E5%AE%A2/</guid><description>&lt;blockquote>
-&lt;p>种豆南山下，草盛豆苗稀。&lt;br>
-晨兴理荒秽，带月荷锄归。&lt;br>
-道狭草木长，夕露沾我衣。&lt;br>
-衣沾不足惜，但使愿无违。&lt;/p>&lt;/blockquote>
-&lt;p>博客荒废好久了！之前也陆陆续续使用过一些博客程序，要么发布部署有些麻烦，要么使用第三方服务不太稳定，一段时间就停止维护了。&lt;/p>
-&lt;p>偶然的机会看到文章： &lt;a href="https://lillianwho.com/posts/obsidian-hugo-cloudflare/">obsidian 配合 hugo、cloudflare：让发布博客简单到不可思议&lt;/a>，心动入坑，花了近一周的时间研究折腾，终于把基于 obsidian 的博客写作与发布工作流搭建起来了，现在可以愉快的一键发布啦。&lt;/p>
-&lt;p>从 0 到 1 折腾踩坑，整个过程好似「&lt;strong>晨兴理荒秽，带月荷锄归&lt;/strong>」，但没有陶渊明那样悠然自得。折腾的心累，年纪再大点肯定折腾不动的，这里首先强烈建议怕麻烦同学的劝退。&lt;/p>
-&lt;h2 id="博客方案">博客方案&lt;/h2>
-&lt;p>折腾前我整理出自己的博客需求如下：&lt;/p>
-&lt;ul>
-&lt;li>简单快捷：使用 Obsidian 写完，一键发布&lt;/li>
-&lt;li>稳定靠谱：减少第三方依赖，尽量使用靠谱的第三方服务，例如 github&lt;/li>
-&lt;li>图片能够顺畅加载：之前直接使用 github 做图床，国内访问很慢&lt;/li>
-&lt;/ul>
-&lt;p>参考一些大佬的配置，最终的选型如下：&lt;/p>
-&lt;ul>
-&lt;li>Obsidian + obsidian git 插件 ：markdown 写作，obsidian git 插件自动上传 github&lt;/li>
-&lt;li>Hugo：静态网站构建工具&lt;/li>
-&lt;li>Github + Github Action ：源码托管，自动化编译（&lt;em>emmm，github 应该不会倒闭&lt;/em>）&lt;/li>
-&lt;li>Cloudflare Page：静态网站托管 （也可以直接用 github page 托管）&lt;/li>
-&lt;li>Picgo + jsdelivr：基于 github 的图床 、cdn 加速&lt;/li>
-&lt;/ul>
-&lt;p>最终达到的效果是：
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Obsidian on 蓝色大树🌲</title><link>https://yaofun.top/tags/obsidian/</link><description>Recent content in Obsidian on 蓝色大树🌲</description><generator>Hugo</generator><language>en</language><copyright>&lt;a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener"&gt;CC BY-NC 4.0&lt;/a&gt;</copyright><lastBuildDate>Thu, 21 Mar 2024 00:00:00 +0000</lastBuildDate><atom:link href="https://yaofun.top/tags/obsidian/index.xml" rel="self" type="application/rss+xml"/><item><title>使用 Obsidian 一键发布博客</title><link>https://yaofun.top/posts/2024/03/%E4%BD%BF%E7%94%A8-obsidian-%E4%B8%80%E9%94%AE%E5%8F%91%E5%B8%83%E5%8D%9A%E5%AE%A2/</link><pubDate>Thu, 21 Mar 2024 00:00:00 +0000</pubDate><guid>https://yaofun.top/posts/2024/03/%E4%BD%BF%E7%94%A8-obsidian-%E4%B8%80%E9%94%AE%E5%8F%91%E5%B8%83%E5%8D%9A%E5%AE%A2/</guid><description>&lt;blockquote&gt;
+&lt;p&gt;种豆南山下，草盛豆苗稀。&lt;br&gt;
+晨兴理荒秽，带月荷锄归。&lt;br&gt;
+道狭草木长，夕露沾我衣。&lt;br&gt;
+衣沾不足惜，但使愿无违。&lt;/p&gt;&lt;/blockquote&gt;
+&lt;p&gt;博客荒废好久了！之前也陆陆续续使用过一些博客程序，要么发布部署有些麻烦，要么使用第三方服务不太稳定，一段时间就停止维护了。&lt;/p&gt;
+&lt;p&gt;偶然的机会看到文章： &lt;a href="https://lillianwho.com/posts/obsidian-hugo-cloudflare/"&gt;obsidian 配合 hugo、cloudflare：让发布博客简单到不可思议&lt;/a&gt;，心动入坑，花了近一周的时间研究折腾，终于把基于 obsidian 的博客写作与发布工作流搭建起来了，现在可以愉快的一键发布啦。&lt;/p&gt;
+&lt;p&gt;从 0 到 1 折腾踩坑，整个过程好似「&lt;strong&gt;晨兴理荒秽，带月荷锄归&lt;/strong&gt;」，但没有陶渊明那样悠然自得。折腾的心累，年纪再大点肯定折腾不动的，这里首先强烈建议怕麻烦同学的劝退。&lt;/p&gt;
+&lt;h2 id="博客方案"&gt;博客方案&lt;/h2&gt;
+&lt;p&gt;折腾前我整理出自己的博客需求如下：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;简单快捷：使用 Obsidian 写完，一键发布&lt;/li&gt;
+&lt;li&gt;稳定靠谱：减少第三方依赖，尽量使用靠谱的第三方服务，例如 github&lt;/li&gt;
+&lt;li&gt;图片能够顺畅加载：之前直接使用 github 做图床，国内访问很慢&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;参考一些大佬的配置，最终的选型如下：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Obsidian + obsidian git 插件 ：markdown 写作，obsidian git 插件自动上传 github&lt;/li&gt;
+&lt;li&gt;Hugo：静态网站构建工具&lt;/li&gt;
+&lt;li&gt;Github + Github Action ：源码托管，自动化编译（&lt;em&gt;emmm，github 应该不会倒闭&lt;/em&gt;）&lt;/li&gt;
+&lt;li&gt;Cloudflare Page：静态网站托管 （也可以直接用 github page 托管）&lt;/li&gt;
+&lt;li&gt;Picgo + jsdelivr：基于 github 的图床 、cdn 加速&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;最终达到的效果是：
 在 obsidian 写文章，通过快捷键一件上传到 git 之后，自动构建发布。
-图片在 obsidian 可以自动上传到 github 图床，并且转为 cdn jsdelivr 加速。如下图所示：&lt;/p></description></item></channel></rss>
+图片在 obsidian 可以自动上传到 github 图床，并且转为 cdn jsdelivr 加速。如下图所示：&lt;/p&gt;</description></item></channel></rss>
