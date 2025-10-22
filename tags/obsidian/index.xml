@@ -2,7 +2,8 @@
 &lt;p&gt;种豆南山下，草盛豆苗稀。&lt;br&gt;
 晨兴理荒秽，带月荷锄归。&lt;br&gt;
 道狭草木长，夕露沾我衣。&lt;br&gt;
-衣沾不足惜，但使愿无违。&lt;/p&gt;&lt;/blockquote&gt;
+衣沾不足惜，但使愿无违。&lt;/p&gt;
+&lt;/blockquote&gt;
 &lt;p&gt;博客荒废好久了！之前也陆陆续续使用过一些博客程序，要么发布部署有些麻烦，要么使用第三方服务不太稳定，一段时间就停止维护了。&lt;/p&gt;
 &lt;p&gt;偶然的机会看到文章： &lt;a href="https://lillianwho.com/posts/obsidian-hugo-cloudflare/"&gt;obsidian 配合 hugo、cloudflare：让发布博客简单到不可思议&lt;/a&gt;，心动入坑，花了近一周的时间研究折腾，终于把基于 obsidian 的博客写作与发布工作流搭建起来了，现在可以愉快的一键发布啦。&lt;/p&gt;
 &lt;p&gt;从 0 到 1 折腾踩坑，整个过程好似「&lt;strong&gt;晨兴理荒秽，带月荷锄归&lt;/strong&gt;」，但没有陶渊明那样悠然自得。折腾的心累，年纪再大点肯定折腾不动的，这里首先强烈建议怕麻烦同学的劝退。&lt;/p&gt;

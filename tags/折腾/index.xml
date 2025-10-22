@@ -10,14 +10,14 @@
 &lt;h3 id="进阶---使用-chathub-做前端"&gt;进阶 - 使用 chathub 做前端&lt;/h3&gt;
 &lt;p&gt;&lt;a href="https://github.com/chathub-dev/chathub"&gt;chathub&lt;/a&gt; 是一个优秀的开源项目，支持多种模型，支持配置 openroute api 的方式，但是目前的最新版已经是付费使用了，所以我找到旧版本重新编译。这个版本自带了 openrouter gpt-4 的 api 访问，基本够用了。&lt;em&gt;我这里稍微修改了下源码，增加了 claude-3-opus 和 openai/gpt-4-turbo-preview 模型。&lt;/em&gt;&lt;/p&gt;
 &lt;p&gt;&lt;strong&gt;编译流程（mac 为例）&lt;/strong&gt;&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;# 环境准备&lt;/span&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;# 安装 node.js&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre tabindex="0" style="color:#e6edf3;background-color:#0d1117;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"&gt;&lt;code class="language-bash" data-lang="bash"&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#8b949e;font-style:italic"&gt;# 环境准备&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#8b949e;font-style:italic"&gt;# 安装 node.js&lt;/span&gt;
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;brew install node
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;# 下载 chathub 源码&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#8b949e;font-style:italic"&gt;# 下载 chathub 源码&lt;/span&gt;
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;git clone git@github.com:chathub-dev/chathub.git
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;
-&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#75715e"&gt;# 编译，可以参考项目 readme&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;&lt;span style="color:#8b949e;font-style:italic"&gt;# 编译，可以参考项目 readme&lt;/span&gt;
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;cd chathub
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;git checkout v1.44.2
 &lt;/span&gt;&lt;/span&gt;&lt;span style="display:flex;"&gt;&lt;span&gt;yarn install
@@ -27,7 +27,8 @@
 &lt;p&gt;种豆南山下，草盛豆苗稀。&lt;br&gt;
 晨兴理荒秽，带月荷锄归。&lt;br&gt;
 道狭草木长，夕露沾我衣。&lt;br&gt;
-衣沾不足惜，但使愿无违。&lt;/p&gt;&lt;/blockquote&gt;
+衣沾不足惜，但使愿无违。&lt;/p&gt;
+&lt;/blockquote&gt;
 &lt;p&gt;博客荒废好久了！之前也陆陆续续使用过一些博客程序，要么发布部署有些麻烦，要么使用第三方服务不太稳定，一段时间就停止维护了。&lt;/p&gt;
 &lt;p&gt;偶然的机会看到文章： &lt;a href="https://lillianwho.com/posts/obsidian-hugo-cloudflare/"&gt;obsidian 配合 hugo、cloudflare：让发布博客简单到不可思议&lt;/a&gt;，心动入坑，花了近一周的时间研究折腾，终于把基于 obsidian 的博客写作与发布工作流搭建起来了，现在可以愉快的一键发布啦。&lt;/p&gt;
 &lt;p&gt;从 0 到 1 折腾踩坑，整个过程好似「&lt;strong&gt;晨兴理荒秽，带月荷锄归&lt;/strong&gt;」，但没有陶渊明那样悠然自得。折腾的心累，年纪再大点肯定折腾不动的，这里首先强烈建议怕麻烦同学的劝退。&lt;/p&gt;
